@@ -1,0 +1,117 @@
+@model List<LMS.ViewModels.SessionListItem>
+@{
+    ViewData["Title"] = "Lịch học";
+    var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+    var classes = ViewBag.Classes as List<LMS.Models.ClassRoom> ?? new();
+    var subjects = ViewBag.Subjects as List<LMS.Models.Subject> ?? new();
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">LEARNING CALENDAR</span>
+        <h1>@(ViewBag.ClassId is not null ? "Lịch lớp học" : User.IsInRole(Roles.Student) ? "Lịch học của tôi" : User.IsInRole(Roles.Teacher) ? "Lịch giảng dạy" : "Lịch lớp học")</h1>
+        <p class="muted">Buổi học, tình trạng đăng ký và thông tin lớp được tập trung tại đây.</p>
+    </div>
+    @if (User.IsInRole(Roles.Teacher))
+    {
+        <a class="btn" asp-action="Availability">+ Khai báo giờ rảnh</a>
+    }
+    @if (User.IsInRole(Roles.Admin))
+    {
+        <div class="action-row">
+            <a class="btn btn-secondary" asp-action="AvailabilityRequests">Duyệt giờ giảng</a>
+            <a class="btn" asp-action="CreateSession">+ Xếp buổi học</a>
+        </div>
+    }
+</div>
+
+<form method="get" class="filter-bar">
+    @if (ViewBag.ClassId is not null)
+    {
+        <input type="hidden" name="classId" value="@ViewBag.ClassId" />
+    }
+    <input name="Query" value="@filter.Query" placeholder="Tìm lớp, môn hoặc giảng viên..." />
+    <select name="ClassId">
+        <option value="">Tất cả lớp</option>
+        @foreach (var classroom in classes)
+        {
+            <option value="@classroom.Id" selected="@(filter.ClassId == classroom.Id.ToString())">@classroom.Name</option>
+        }
+    </select>
+    <select name="SubjectId">
+        <option value="">Tất cả môn</option>
+        @foreach (var subject in subjects)
+        {
+            <option value="@subject.Id" selected="@(filter.SubjectId == subject.Id.ToString())">@subject.Code · @subject.Name</option>
+        }
+    </select>
+    <select name="Status">
+        <option value="">Mọi trạng thái</option>
+        <option value="@LMS.Models.ScheduleStatuses.Scheduled" selected="@(filter.Status == LMS.Models.ScheduleStatuses.Scheduled)">Đang mở</option>
+        <option value="@LMS.Models.ScheduleStatuses.Cancelled" selected="@(filter.Status == LMS.Models.ScheduleStatuses.Cancelled)">Đã hủy</option>
+    </select>
+    <label>Từ ngày <input type="date" name="StartFrom" value="@filter.StartFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến ngày <input type="date" name="StartTo" value="@filter.StartTo?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index" asp-route-classId="@ViewBag.ClassId">Xóa lọc</a>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <div class="empty-icon">◷</div>
+        <h2>Chưa có buổi học nào</h2>
+        <p class="muted">Các buổi được quản trị viên xếp lịch sẽ xuất hiện tại đây.</p>
+    </div>
+}
+else
+{
+    <div class="session-grid">
+        @foreach (var session in Model)
+        {
+            <article class="session-card @(session.Status == ScheduleStatuses.Cancelled ? "session-cancelled" : "")">
+                <div class="session-date">
+                    <span>@session.StartAt.ToLocalTime().ToString("ddd")</span>
+                    <strong>@session.StartAt.ToLocalTime().ToString("dd")</strong>
+                    <span>@session.StartAt.ToLocalTime().ToString("MMM")</span>
+                </div>
+                <div class="session-main">
+                    <div class="title-row">
+                        <div>
+                            <span class="eyebrow">@session.ClassName · @session.SubjectName</span>
+                            <h2>@session.StartAt.ToLocalTime().ToString("HH:mm") – @session.EndAt.ToLocalTime().ToString("HH:mm")</h2>
+                        </div>
+                        <span class="badge @(session.Status == ScheduleStatuses.Scheduled ? "badge-open" : "badge-muted")">@(session.Status == ScheduleStatuses.Scheduled ? "Đang mở" : "Đã hủy")</span>
+                    </div>
+                    <p class="muted">Giảng viên: <strong>@session.TeacherName</strong></p>
+                    <div class="session-meta">
+                        <span>◉ @session.EnrolledCount / @session.Capacity học viên</span>
+                        @if (session.IsEnrolled)
+                        {
+                            <span class="badge badge-enrolled">Đã đăng ký</span>
+                        }
+                    </div>
+                    @if (session.Status == ScheduleStatuses.Cancelled)
+                    {
+                        <p class="cancel-note">Lý do hủy: @session.CancellationReason</p>
+                    }
+                    <div class="action-row session-actions">
+                        <a class="btn btn-ghost" asp-action="Details" asp-route-id="@session.Id">Chi tiết buổi học</a>
+                        @if (User.IsInRole(Roles.Student) && session.Status == ScheduleStatuses.Scheduled && !session.IsEnrolled)
+                        {
+                            <form method="post" asp-action="Enroll" asp-route-id="@session.Id">
+                                <button class="btn" type="submit">Đăng ký học</button>
+                            </form>
+                        }
+                        @if (User.IsInRole(Roles.Student) && session.IsEnrolled && session.Status == ScheduleStatuses.Scheduled)
+                        {
+                            <form method="post" asp-action="Withdraw" asp-route-id="@session.Id">
+                                <button class="btn btn-danger-outline" type="submit">Hủy đăng ký</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            </article>
+        }
+    </div>
+}

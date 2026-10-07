@@ -1,0 +1,26 @@
+@model LMS.ViewModels.TeachingAssignmentViewModel
+@{
+    ViewData["Title"] = "Phân công giảng viên";
+}
+
+<div class="page-heading"><div><span class="eyebrow">CLASS OPERATIONS</span><h1>Phân công giảng viên</h1><p class="muted">@ViewBag.ClassName · Môn học: <strong>@ViewBag.SubjectName</strong></p></div></div>
+
+@{
+    var teachers = ViewData["Teachers"] as List<LMS.Models.User> ?? new();
+}
+
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <input asp-for="ClassId" type="hidden" />
+    <input asp-for="SubjectId" type="hidden" />
+    <label asp-for="TeacherId">Teacher</label>
+    <select asp-for="TeacherId">
+        <option value="">-- Chọn giảng viên đủ chuyên môn --</option>
+        @foreach (var teacher in teachers)
+        {
+            <option value="@teacher.Id">@teacher.FullName (@teacher.Email)</option>
+        }
+    </select>
+    <span asp-validation-for="TeacherId" class="error"></span>
+    <button type="submit">Lưu phân công</button>
+</form>

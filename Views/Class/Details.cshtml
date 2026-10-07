@@ -1,0 +1,53 @@
+@model LMS.Models.ClassRoom
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">CLASS PROFILE</span><h1>@Model.Name</h1><p class="muted">@ViewBag.SubjectName · Giảng viên: @ViewBag.TeacherName</p></div>
+    @if (User.IsInRole(Roles.Admin))
+    {
+        <a class="btn btn-secondary" asp-action="Edit" asp-route-id="@Model.Id">Chỉnh sửa lớp</a>
+    }
+</div>
+<div class="detail-grid">
+    <section class="card detail-card">
+        <span class="eyebrow">THÔNG TIN LỚP</span>
+        <h2>Tổng quan</h2>
+        <p class="muted">@Model.Description</p>
+        <dl class="detail-list">
+            <dt>Giảng viên</dt><dd>@ViewBag.TeacherName</dd>
+            <dt>Môn học</dt><dd>@ViewBag.SubjectName</dd>
+            <dt>Học viên</dt><dd>@(Model.StudentIds?.Count ?? 0)</dd>
+        </dl>
+        <div class="action-row">
+            <a class="btn btn-secondary" asp-controller="Lesson" asp-action="Index" asp-route-classId="@Model.Id">Bài học</a>
+            <a class="btn btn-secondary" asp-controller="Assignment" asp-action="Index" asp-route-classId="@Model.Id">Bài tập</a>
+            <a class="btn" asp-controller="Schedule" asp-action="Index" asp-route-classId="@Model.Id">Lịch lớp</a>
+        </div>
+    </section>
+    <section class="card detail-card">
+        <span class="eyebrow">CLASS ROSTER</span>
+        <h2>Danh sách học viên</h2>
+        @{
+            var students = ViewData["Students"] as List<LMS.Models.User> ?? new();
+        }
+        @if (students.Count == 0)
+        {
+            <p class="muted">Lớp hiện chưa có học viên.</p>
+        }
+        else
+        {
+            <div class="roster-list">
+                @foreach (var student in students)
+                {
+                    <div class="roster-row">
+                        <div class="avatar">@(string.IsNullOrWhiteSpace(student.FullName) ? "?" : student.FullName.Substring(0, 1).ToUpperInvariant())</div>
+                        <div><strong>@student.FullName</strong><small>@student.Email</small></div>
+                        <span class="badge badge-enrolled">Học viên</span>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+</div>

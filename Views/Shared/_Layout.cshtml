@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@(ViewData["Title"] ?? "LearnSpace") · LearnSpace</title>
+    <meta name="theme-color" content="#f5f7fb" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="app-shell">
+            <aside class="sidebar">
+                <a class="brand" asp-controller="Dashboard" asp-action="Index"><span class="brand-mark">L</span><span>LearnSpace<small>LEARNING MANAGEMENT</small></span></a>
+                <div class="nav-caption">WORKSPACE</div>
+                <nav class="side-nav">
+                    <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index"><span class="nav-icon">◫</span>Tổng quan</a>
+                    <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Class" ? "active" : "")" asp-controller="Class" asp-action="Index"><span class="nav-icon">▤</span>@(User.IsInRole(Roles.Student) ? "Lớp của tôi" : "Lớp học")</a>
+                    <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Schedule" ? "active" : "")" asp-controller="Schedule" asp-action="Index"><span class="nav-icon">◷</span>Lịch học</a>
+                    @if (User.IsInRole(Roles.Teacher))
+                    {
+                        <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Availability" ? "active" : "")" asp-controller="Schedule" asp-action="Availability"><span class="nav-icon">◷</span>Giờ có thể dạy</a>
+                    }
+                </nav>
+                @if (User.IsInRole(Roles.Admin))
+                {
+                    <div class="nav-caption">QUẢN TRỊ</div>
+                    <nav class="side-nav">
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Department" ? "active" : "")" asp-controller="Department" asp-action="Index"><span class="nav-icon">▦</span>Khoa</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Subject" ? "active" : "")" asp-controller="Subject" asp-action="Index"><span class="nav-icon">◈</span>Môn học</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "TeachingAssignment" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-controller="TeachingAssignment" asp-action="Index"><span class="nav-icon">⇄</span>Phân công lớp</a>
+                        <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "TeacherSubjects" ? "active" : "")" asp-controller="TeachingAssignment" asp-action="TeacherSubjects"><span class="nav-icon">◇</span>Môn giảng viên</a>
+                        <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "AvailabilityRequests" ? "active" : "")" asp-controller="Schedule" asp-action="AvailabilityRequests"><span class="nav-icon">✓</span>Duyệt giờ dạy</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" asp-controller="User" asp-action="Index"><span class="nav-icon">♙</span>Người dùng</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "ActivityLog" ? "active" : "")" asp-controller="ActivityLog" asp-action="Index"><span class="nav-icon">≡</span>Nhật ký hoạt động</a>
+                    </nav>
+                }
+                <div class="sidebar-bottom">
+                    <div class="account-chip">
+                        <span class="avatar">@((User.Identity.Name ?? "U").Substring(0, 1).ToUpperInvariant())</span>
+                        <span class="account-name">@User.Identity.Name<small>@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</small></span>
+                    </div>
+                    <form asp-controller="Auth" asp-action="Logout" method="post"><button class="btn btn-ghost logout-button" type="submit">Đăng xuất <span aria-hidden="true">↗</span></button></form>
+                </div>
+            </aside>
+            <div class="workspace">
+                <header class="topbar">
+                    <div><span class="topbar-kicker">LEARNING MANAGEMENT SYSTEM</span><strong>@(ViewData["Title"] ?? "Không gian làm việc")</strong></div>
+                    <span class="topbar-date">@DateTime.Now.ToString("dd/MM/yyyy")</span>
+                </header>
+                <main class="container">
+                    @if (TempData["Success"] is string success)
+                    {
+                        <div class="flash flash-success" role="status">@success</div>
+                    }
+                    @if (TempData["Error"] is string error)
+                    {
+                        <div class="flash flash-error" role="alert">@error</div>
+                    }
+                    @RenderBody()
+                    <footer class="app-footer">LearnSpace <span>·</span> Nền tảng quản lý học tập</footer>
+                </main>
+            </div>
+        </div>
+    }
+    else
+    {
+        <main class="auth-layout">
+            @RenderBody()
+        </main>
+    }
+</body>
+</html>

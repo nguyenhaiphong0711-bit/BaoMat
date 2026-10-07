@@ -1,0 +1,84 @@
+@model LMS.ViewModels.SchedulePlannerViewModel
+@{
+    ViewData["Title"] = "Xếp buổi học";
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">ADMIN WORKSPACE</span>
+        <h1>Tạo và phân công buổi học</h1>
+        <p class="muted">Chọn lớp, môn và giờ. Giáo viên được lấy từ lớp và phải đủ chuyên môn cho môn học.</p>
+    </div>
+</div>
+
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    @if (Model.Classes.Count == 0)
+    {
+        <div class="empty-state compact">
+            <h2>Chưa có lớp đủ điều kiện xếp lịch</h2>
+            <p class="muted">Tạo môn học, gán môn cho giáo viên, rồi tạo lớp có cùng môn và giảng viên.</p>
+            <div class="action-row">
+                <a class="btn btn-secondary" asp-controller="Subject" asp-action="Index">Quản lý môn học</a>
+                <a class="btn btn-secondary" asp-controller="TeachingAssignment" asp-action="TeacherSubjects">Môn giảng viên</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <label asp-for="Request.ClassId">Lớp học</label>
+        <select asp-for="Request.ClassId" id="classPicker">
+            @foreach (var classroom in Model.Classes)
+            {
+                <option value="@classroom.ClassId" data-subject="@classroom.SubjectId" data-teacher="@classroom.TeacherName">
+                    @classroom.ClassName · @classroom.SubjectName · @classroom.TeacherName
+                </option>
+            }
+        </select>
+        <span asp-validation-for="Request.ClassId" class="error"></span>
+
+        <label asp-for="Request.SubjectId">Môn học</label>
+        <select asp-for="Request.SubjectId" id="subjectPicker">
+            @foreach (var subject in Model.Subjects)
+            {
+                <option value="@subject.Id">@subject.Code · @subject.Name</option>
+            }
+        </select>
+        <span asp-validation-for="Request.SubjectId" class="error"></span>
+        <p class="notice">Giảng viên phụ trách: <strong id="teacherName">@Model.TeacherName</strong></p>
+
+        <label asp-for="Request.StartAt">Bắt đầu</label>
+        <input asp-for="Request.StartAt" type="datetime-local" />
+        <span asp-validation-for="Request.StartAt" class="error"></span>
+
+        <label asp-for="Request.EndAt">Kết thúc</label>
+        <input asp-for="Request.EndAt" type="datetime-local" />
+        <span asp-validation-for="Request.EndAt" class="error"></span>
+
+        <label asp-for="Request.Capacity">Sức chứa</label>
+        <input asp-for="Request.Capacity" type="number" min="1" max="500" />
+        <span asp-validation-for="Request.Capacity" class="error"></span>
+        <div class="notice">Buổi học phải ở tương lai, tối đa 8 tiếng. Hệ thống từ chối nếu giảng viên hoặc lớp có lịch trùng.</div>
+        <button type="submit">Tạo buổi và mở đăng ký</button>
+    }
+</form>
+
+@if (Model.Classes.Count > 0)
+{
+    <script>
+        const classPicker = document.getElementById("classPicker");
+        const subjectPicker = document.getElementById("subjectPicker");
+        const teacherName = document.getElementById("teacherName");
+        function syncClassDetails() {
+            const selected = classPicker.options[classPicker.selectedIndex];
+            for (const option of subjectPicker.options) {
+                option.hidden = option.value !== selected.dataset.subject;
+                option.disabled = option.hidden;
+            }
+            subjectPicker.value = selected.dataset.subject;
+            teacherName.textContent = selected.dataset.teacher;
+        }
+        classPicker.addEventListener("change", syncClassDetails);
+        syncClassDetails();
+    </script>
+}

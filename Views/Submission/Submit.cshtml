@@ -1,0 +1,22 @@
+@model LMS.ViewModels.SubmissionViewModel
+@{
+    ViewData["Title"] = "Nộp bài";
+}
+
+<div class="page-heading"><div><span class="eyebrow">BÀI TẬP</span><h1>@ViewBag.Assignment.Title</h1><p class="muted">Nộp câu trả lời trước hạn để được giảng viên đánh giá.</p></div></div>
+
+@if (ViewBag.Submission is LMS.Models.Submission submission && submission.Grade.HasValue)
+{
+    <div class="card">
+        <span class="eyebrow">KẾT QUẢ CHẤM</span>
+        <h2>@submission.Grade / 10</h2>
+        <p>@submission.TeacherComment</p>
+    </div>
+}
+
+<form method="post" class="form form-card">
+    <label asp-for="Content">Câu trả lời</label>
+    <textarea asp-for="Content" rows="12"></textarea>
+    <span asp-validation-for="Content" class="error"></span>
+    <button>Nộp bài</button>
+</form>

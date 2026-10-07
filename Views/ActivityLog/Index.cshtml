@@ -1,0 +1,43 @@
+@model List<ActivityLog>
+@{
+    ViewData["Title"] = "Nhật ký hoạt động";
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">SECURITY & AUDIT</span><h1>Nhật ký hoạt động</h1><p class="muted">Theo dõi các sự kiện xác thực và thao tác gần đây.</p></div>
+    <span class="badge">@Model.Count bản ghi gần nhất</span>
+</div>
+@{
+    var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+}
+<form method="get" class="filter-bar">
+    <input name="Query" value="@filter.Query" placeholder="Tìm email, thao tác, IP..." />
+    <select name="Status">
+        <option value="">Mọi kết quả</option>
+        <option value="true" selected="@(filter.Status == "true")">Thành công</option>
+        <option value="false" selected="@(filter.Status == "false")">Thất bại</option>
+    </select>
+    <label>Từ ngày <input type="date" name="CreatedFrom" value="@filter.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến ngày <input type="date" name="CreatedTo" value="@filter.CreatedTo?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index">Xóa lọc</a>
+</form>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>Thời gian</th><th>Tài khoản</th><th>Hoạt động</th><th>Kết quả</th><th>Thông tin</th><th>Địa chỉ IP</th></tr></thead>
+        <tbody>
+            @foreach(var x in Model)
+            {
+                <tr>
+                    <td>@x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                    <td>@x.Email</td>
+                    <td><span class="badge">@x.Action</span></td>
+                    <td><span class="badge @(x.Success ? "badge-open" : "badge-muted")">@(x.Success ? "Thành công" : "Thất bại")</span></td>
+                    <td>@x.Message</td>
+                    <td>@x.IpAddress</td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="6" class="muted">Không tìm thấy nhật ký phù hợp.</td></tr> }
+        </tbody>
+    </table>
+</div>

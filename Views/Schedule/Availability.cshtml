@@ -1,0 +1,66 @@
+@model LMS.ViewModels.TeacherAvailabilityPageViewModel
+@{
+    ViewData["Title"] = "Giờ có thể dạy";
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">TEACHER WORKSPACE</span>
+        <h1>Khai báo giờ có thể dạy</h1>
+        <p class="muted">Gửi các khung giờ bạn có thể dạy. Quản trị viên có thể xem thông tin này khi sắp lịch.</p>
+    </div>
+</div>
+
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <div class="form-grid">
+        <div>
+            <label asp-for="Request.StartAt">Bắt đầu</label>
+            <input asp-for="Request.StartAt" type="datetime-local" />
+            <span asp-validation-for="Request.StartAt" class="error"></span>
+        </div>
+        <div>
+            <label asp-for="Request.EndAt">Kết thúc</label>
+            <input asp-for="Request.EndAt" type="datetime-local" />
+            <span asp-validation-for="Request.EndAt" class="error"></span>
+        </div>
+    </div>
+    <label asp-for="Request.Note">Ghi chú (không bắt buộc)</label>
+    <textarea asp-for="Request.Note" rows="3" placeholder="Ví dụ: có thể dạy trực tuyến"></textarea>
+    <div class="action-row">
+        <button type="submit">Gửi admin duyệt</button>
+        <a class="btn btn-ghost" asp-action="Index">Quay lại lịch</a>
+    </div>
+</form>
+
+<div class="section-heading"><div><span class="eyebrow">AVAILABILITY HISTORY</span><h2>Yêu cầu của tôi</h2></div></div>
+@if (Model.Requests.Count == 0)
+{
+    <div class="empty-state compact"><p class="muted">Bạn chưa gửi khung giờ nào.</p></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Thời gian</th><th>Ghi chú</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var item in Model.Requests)
+                {
+                    <tr>
+                        <td>@item.StartAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") – @item.EndAt.ToLocalTime().ToString("HH:mm")</td>
+                        <td>@(string.IsNullOrWhiteSpace(item.Note) ? "—" : item.Note)</td>
+                        <td><span class="badge @(item.Status == ScheduleStatuses.Pending ? "badge-pending" : item.Status == ScheduleStatuses.Approved ? "badge-open" : "badge-muted")">@item.Status</span></td>
+                        <td>
+                            @if (item.Status == ScheduleStatuses.Pending)
+                            {
+                                <form method="post" asp-action="CancelAvailability" asp-route-id="@item.Id">
+                                    <button class="btn btn-danger-outline small" type="submit">Rút yêu cầu</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

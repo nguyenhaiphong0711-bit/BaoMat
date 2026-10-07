@@ -1,0 +1,50 @@
+@model List<LMS.ViewModels.AvailabilityListItem>
+@{
+    ViewData["Title"] = "Duyệt giờ giảng";
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">ADMIN WORKSPACE</span>
+        <h1>Giờ giảng viên đăng ký</h1>
+        <p class="muted">Theo dõi khung giờ giảng viên đề xuất. Khi tạo buổi, quản trị viên chọn trực tiếp lớp và thời gian.</p>
+    </div>
+    <a class="btn btn-ghost" asp-action="Index">Lịch lớp</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><h2>Chưa có yêu cầu</h2><p class="muted">Yêu cầu giờ rảnh của giảng viên sẽ hiển thị ở đây.</p></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Giảng viên</th><th>Thời gian</th><th>Ghi chú</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <tbody>
+                @foreach (var request in Model)
+                {
+                    <tr>
+                        <td><strong>@request.TeacherName</strong></td>
+                        <td>@request.StartAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") – @request.EndAt.ToLocalTime().ToString("HH:mm")</td>
+                        <td>@(string.IsNullOrWhiteSpace(request.Note) ? "—" : request.Note)</td>
+                        <td><span class="badge @(request.Status == ScheduleStatuses.Pending ? "badge-pending" : request.Status == ScheduleStatuses.Approved ? "badge-open" : "badge-muted")">@request.Status</span></td>
+                        <td>
+                            @if (request.Status == ScheduleStatuses.Pending)
+                            {
+                                <div class="action-row">
+                                    <form method="post" asp-action="ReviewAvailability" asp-route-id="@request.Id" asp-route-approve="true"><button class="btn small" type="submit">Duyệt</button></form>
+                                    <form method="post" asp-action="ReviewAvailability" asp-route-id="@request.Id" asp-route-approve="false"><button class="btn btn-danger-outline small" type="submit">Từ chối</button></form>
+                                </div>
+                            }
+                            else if (request.Status == ScheduleStatuses.Approved)
+                            {
+                                <a class="btn btn-secondary small" asp-action="CreateSession">Tạo buổi học</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,100 @@
+@model LMS.ViewModels.CreateClassViewModel
+@{
+    ViewData["Title"] = "Tạo lớp học";
+}
+
+<div class="page-heading"><div><span class="eyebrow">CLASS MANAGEMENT</span><h1>Tạo lớp học</h1><p class="muted">Chọn môn học và phân công giảng viên có chuyên môn phù hợp.</p></div></div>
+
+@{
+    var teachers = ViewData["Teachers"] as List<LMS.Models.User>;
+    var students = ViewData["Students"] as List<LMS.Models.User>;
+    var subjects = ViewData["Subjects"] as List<LMS.Models.Subject> ?? new();
+    var departments = ViewBag.Departments as List<LMS.Models.Department> ?? new();
+}
+
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <label asp-for="Name">Tên lớp</label>
+    <input asp-for="Name" />
+    <span asp-validation-for="Name" class="error"></span>
+
+    <label asp-for="Description">Mô tả</label>
+    <textarea asp-for="Description"></textarea>
+
+    <label>Khoa</label>
+    <select id="DepartmentId">
+        <option value="">-- Chọn khoa --</option>
+        @foreach (var department in departments)
+        {
+            <option value="@department.Id">@department.Code · @department.Name</option>
+        }
+    </select>
+    <label asp-for="SubjectId">Môn học</label>
+    <select asp-for="SubjectId">
+        <option value="">-- Chọn môn --</option>
+        @foreach (var subject in subjects)
+        {
+            <option value="@subject.Id" data-department="@subject.DepartmentId">@subject.Code · @subject.Name</option>
+        }
+    </select>
+    <span asp-validation-for="SubjectId" class="error"></span>
+
+    <label asp-for="TeacherId">Giảng viên</label>
+    <select asp-for="TeacherId">
+        <option value="">-- Chọn giảng viên --</option>
+        @if (teachers != null)
+        {
+            @foreach (var x in teachers)
+            {
+                <option value="@x.Id" data-subjects="@string.Join(",", x.TeachingSubjectIds.Select(id => id.ToString()))">@x.FullName</option>
+            }
+        }
+    </select>
+    <span asp-validation-for="TeacherId" class="error"></span>
+
+    <label asp-for="StudentIds">Học viên</label>
+    <select asp-for="StudentIds" multiple>
+        @if (students != null)
+        {
+            @foreach (var x in students)
+            {
+                <option value="@x.Id">@x.FullName</option>
+            }
+        }
+    </select>
+
+    <p class="muted">Giữ Ctrl (Windows) hoặc Command (Mac) để chọn nhiều học viên.</p>
+    <div class="action-row"><button type="submit">Tạo lớp</button><a class="btn btn-ghost" asp-action="Index">Hủy</a></div>
+</form>
+<script>
+    const classSubject = document.getElementById("SubjectId");
+    const departmentPicker = document.getElementById("DepartmentId");
+    const teacherPicker = document.getElementById("TeacherId");
+    function filterSubjectsByDepartment() {
+        for (const option of classSubject.options) {
+            if (!option.value) continue;
+            option.hidden = !!departmentPicker.value && option.dataset.department !== departmentPicker.value;
+            if (option.hidden && option.selected) classSubject.value = "";
+        }
+    }
+    departmentPicker.addEventListener("change", filterSubjectsByDepartment);
+    classSubject.addEventListener("change", () => {
+        const selected = classSubject.selectedOptions[0];
+        if (selected && selected.dataset.department) departmentPicker.value = selected.dataset.department;
+        filterSubjectsByDepartment();
+        filterTeachersBySubject();
+    });
+    function filterTeachersBySubject() {
+        const subjectId = classSubject.value;
+        for (const option of teacherPicker.options) {
+            if (!option.value) continue;
+            option.hidden = !option.dataset.subjects.split(",").includes(subjectId);
+            if (option.hidden && option.selected) teacherPicker.value = "";
+        }
+    }
+    classSubject.addEventListener("change", filterTeachersBySubject);
+    const selectedSubject = classSubject.selectedOptions[0];
+    if (selectedSubject && selectedSubject.dataset.department) departmentPicker.value = selectedSubject.dataset.department;
+    filterSubjectsByDepartment();
+    filterTeachersBySubject();
+</script>

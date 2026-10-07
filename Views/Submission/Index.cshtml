@@ -1,0 +1,38 @@
+@model List<LMS.ViewModels.SubmissionListItemViewModel>
+@{
+    ViewData["Title"] = "Bài nộp";
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">@ViewBag.ClassName · @ViewBag.Assignment.Title</span>
+        <h1>Bài nộp học viên</h1>
+        <p class="muted">@Model.Count bài nộp · Hạn nộp @ViewBag.Assignment.DueDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+    </div>
+    <a class="btn btn-ghost" asp-controller="Assignment" asp-action="Index" asp-route-classId="@ViewBag.Assignment.ClassId">Quay lại bài tập</a>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><h2>Chưa có bài nộp</h2><p class="muted">Bài nộp sẽ xuất hiện tại đây sau khi học viên gửi.</p></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Học viên</th><th>Bài làm</th><th>Ngày nộp</th><th>Điểm</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var submission in Model)
+                {
+                    <tr>
+                        <td><strong>@submission.StudentName</strong><br /><small class="muted">@submission.StudentEmail</small></td>
+                        <td class="submission-content">@submission.Content</td>
+                        <td>@submission.SubmittedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td><span class="badge @(submission.Grade.HasValue ? "badge-open" : "badge-pending")">@(submission.Grade?.ToString("0.##") ?? "Chưa chấm")</span></td>
+                        <td><a class="btn btn-secondary small" asp-action="Grade" asp-route-id="@submission.Id">@(submission.Grade.HasValue ? "Sửa điểm" : "Chấm bài")</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,73 @@
+@{
+    ViewData["Title"] = "Tổng quan";
+    var isAdmin = User.IsInRole(Roles.Admin);
+    var isTeacher = User.IsInRole(Roles.Teacher);
+    var displayName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "bạn";
+}
+
+<section class="dashboard-hero">
+    <div>
+        <span class="eyebrow">@(isAdmin ? "ADMINISTRATOR" : isTeacher ? "TEACHER WORKSPACE" : "STUDENT WORKSPACE")</span>
+        <h1>Xin chào, @displayName</h1>
+        <p>
+            @(isAdmin
+                ? "Quản lý danh mục môn học, lớp, giảng viên và lịch học từ một không gian tập trung."
+                : isTeacher
+                    ? "Theo dõi lớp phụ trách, cập nhật nội dung học tập và quản lý tiến độ học viên."
+                    : "Truy cập lớp học, theo dõi lịch và tiếp tục hành trình học tập của bạn.")
+        </p>
+    </div>
+    <div class="hero-actions">
+        <a class="btn" asp-controller="@(isAdmin ? "Class" : "Schedule")" asp-action="@(isAdmin ? "Index" : "Index")">
+            @(isAdmin ? "Mở danh sách lớp" : "Xem lịch học")
+        </a>
+    </div>
+</section>
+
+<div class="dashboard-section-title">
+    <div><h2>Lối tắt</h2><p>Các khu vực bạn thường xuyên sử dụng</p></div>
+</div>
+<section class="dashboard-shortcuts">
+    <a class="shortcut-card" asp-controller="Class" asp-action="Index">
+        <span class="shortcut-icon">▤</span>
+        <div><strong>@(User.IsInRole(Roles.Student) ? "Lớp học của tôi" : "Lớp học")</strong><small>Xem lớp, học viên và nội dung khóa học</small></div>
+    </a>
+    <a class="shortcut-card" asp-controller="Schedule" asp-action="Index">
+        <span class="shortcut-icon">◷</span>
+        <div><strong>Lịch học</strong><small>Theo dõi các buổi học và trạng thái đăng ký</small></div>
+    </a>
+    @if (isAdmin)
+    {
+        <a class="shortcut-card" asp-controller="Subject" asp-action="Index">
+            <span class="shortcut-icon">◈</span>
+            <div><strong>Danh mục môn học</strong><small>Quản lý các môn trong chương trình</small></div>
+        </a>
+        <a class="shortcut-card" asp-controller="TeachingAssignment" asp-action="TeacherSubjects">
+            <span class="shortcut-icon">◇</span>
+            <div><strong>Môn giảng viên</strong><small>Khai báo chuyên môn giảng dạy</small></div>
+        </a>
+        <a class="shortcut-card" asp-controller="TeachingAssignment" asp-action="Index">
+            <span class="shortcut-icon">⇄</span>
+            <div><strong>Phân công lớp</strong><small>Gán giảng viên phù hợp cho lớp</small></div>
+        </a>
+        <a class="shortcut-card" asp-controller="User" asp-action="Index">
+            <span class="shortcut-icon">♙</span>
+            <div><strong>Người dùng</strong><small>Quản lý tài khoản và vai trò</small></div>
+        </a>
+    }
+    @if (isTeacher)
+    {
+        <a class="shortcut-card" asp-controller="Schedule" asp-action="Availability">
+            <span class="shortcut-icon">◷</span>
+            <div><strong>Giờ có thể dạy</strong><small>Khai báo thời gian sẵn sàng</small></div>
+        </a>
+    }
+</section>
+
+<section class="workspace-note">
+    <span class="shortcut-icon">✓</span>
+    <div>
+        <strong>Không gian học tập được phân quyền</strong>
+        <p>Mỗi lớp, bài học, bài tập và bài nộp chỉ hiển thị với đúng thành viên hoặc người phụ trách.</p>
+    </div>
+</section>

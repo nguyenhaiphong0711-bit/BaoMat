@@ -1,0 +1,397 @@
+{
+  "info": {
+    "_postman_id": "4f852b43-bb46-4fc4-88ce-87a2931d1166",
+    "name": "LMS Secure API",
+    "description": "Integration requests for authentication, role authorization, class access, lessons, assignments, schedules, enrollments, submissions, and grading. Run the requests in order. Postman keeps the authentication cookie in its cookie jar.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "adminEmail", "value": "admin@lms.com" },
+    { "key": "adminPassword", "value": "Admin@123" },
+    { "key": "teacherEmail", "value": "teacher@lms.com" },
+    { "key": "teacherPassword", "value": "Teacher@123" },
+    { "key": "studentEmail", "value": "student@lms.com" },
+    { "key": "studentPassword", "value": "Student@123" },
+    { "key": "teacherId", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "subjectId", "value": "" },
+    { "key": "subjectCode", "value": "" },
+    { "key": "departmentId", "value": "" },
+    { "key": "departmentCode", "value": "" },
+    { "key": "teacherSubjectIds", "value": "[]" },
+    { "key": "classId", "value": "" },
+    { "key": "lessonId", "value": "" },
+    { "key": "assignmentId", "value": "" },
+    { "key": "submissionId", "value": "" },
+    { "key": "availabilityId", "value": "" },
+    { "key": "sessionStart", "value": "" },
+    { "key": "sessionEnd", "value": "" },
+    { "key": "sessionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1 - Admin authentication and setup",
+      "item": [
+        {
+          "name": "Login as admin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().role).to.eql('Admin');"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Get current identity",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('adminEmail'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "List users (admin only)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/users" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "const users = pm.response.json();", "pm.collectionVariables.set('teacherId', users.find(user => user.email === pm.collectionVariables.get('teacherEmail')).id);", "pm.collectionVariables.set('studentId', users.find(user => user.email === pm.collectionVariables.get('studentEmail')).id);", "pm.expect(users.every(user => !('passwordHash' in user))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Create department",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{departmentCode}}\",\n  \"name\": \"Postman Faculty\",\n  \"description\": \"Faculty created by the Postman workflow.\"\n}" },
+            "url": "{{baseUrl}}/api/departments"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('departmentCode', 'PF' + Date.now().toString().slice(-8));"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('departmentId', pm.response.json().id);"], "type": "text/javascript" } }
+          ]
+        },
+        {
+          "name": "List departments",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/departments" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().some(department => department.id === pm.collectionVariables.get('departmentId'))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Read department",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/departments/{{departmentId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().code).to.eql(pm.collectionVariables.get('departmentCode'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Update department",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{departmentCode}}\",\n  \"name\": \"Postman Faculty Updated\",\n  \"description\": \"Updated by the Postman workflow.\"\n}" },
+            "url": "{{baseUrl}}/api/departments/{{departmentId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"] , "type": "text/javascript" } }]
+        },
+        {
+          "name": "Create a subject",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"departmentId\": \"{{departmentId}}\",\n  \"code\": \"{{subjectCode}}\",\n  \"name\": \"Postman course subject\",\n  \"description\": \"Subject created by the Postman workflow.\"\n}" },
+            "url": "{{baseUrl}}/api/subjects"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["pm.collectionVariables.set('subjectCode', 'PM' + Date.now().toString().slice(-8));"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('subjectId', pm.response.json().id);"], "type": "text/javascript" } }
+          ]
+        },
+        {
+          "name": "Get subject catalog",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/subjects" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().some(subject => subject.id === pm.collectionVariables.get('subjectId'))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Update a subject",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"departmentId\": \"{{departmentId}}\",\n  \"code\": \"{{subjectCode}}\",\n  \"name\": \"Postman course subject\",\n  \"description\": \"Subject created and updated by the Postman workflow.\"\n}" },
+            "url": "{{baseUrl}}/api/subjects/{{subjectId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Read teacher's current subjects",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/teachers/{{teacherId}}/subjects" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "const ids = pm.response.json().map(subject => subject.id);", "ids.push(pm.collectionVariables.get('subjectId'));", "pm.collectionVariables.set('teacherSubjectIds', JSON.stringify([...new Set(ids)]));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Assign subject to teacher",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"subjectIds\": {{teacherSubjectIds}}\n}" },
+            "url": "{{baseUrl}}/api/teachers/{{teacherId}}/subjects"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(204);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Create class",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman API class\",\n  \"description\": \"Class created by the LMS Postman collection\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"teacherId\": \"{{teacherId}}\",\n  \"studentIds\": [\"{{studentId}}\"]\n}" },
+            "url": "{{baseUrl}}/api/classes"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('classId', pm.response.json().id);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Reject deleting a subject used by a class",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/subjects/{{subjectId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(409);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Reject deleting a department with subjects",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/departments/{{departmentId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(409);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Assign or confirm class teacher",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"teacherId\": \"{{teacherId}}\"\n}" },
+            "url": "{{baseUrl}}/api/classes/{{classId}}/teaching-assignment"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().teacherId).to.eql(pm.collectionVariables.get('teacherId'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Update class and student roster",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman API class\",\n  \"description\": \"Class and roster updated by the Postman collection\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"teacherId\": \"{{teacherId}}\",\n  \"studentIds\": [\"{{studentId}}\"]\n}" },
+            "url": "{{baseUrl}}/api/classes/{{classId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().studentIds).to.include(pm.collectionVariables.get('studentId'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Create published lesson",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Postman lesson\",\n  \"content\": \"Lesson created by the Postman collection.\",\n  \"isPublished\": true\n}" },
+            "url": "{{baseUrl}}/api/classes/{{classId}}/lessons"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('lessonId', pm.response.json().id);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Create published assignment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Postman assignment\",\n  \"description\": \"Submit this assignment using the student account.\",\n  \"dueDate\": \"2030-12-31T23:59:00Z\",\n  \"isPublished\": true\n}" },
+            "url": "{{baseUrl}}/api/classes/{{classId}}/assignments"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('assignmentId', pm.response.json().id);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Read activity logs (admin only)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/activity-logs" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "2 - Student access and submission",
+      "item": [
+        {
+          "name": "Login as student",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().role).to.eql('Student');"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student sees only their classes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/classes" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().some(item => item.id === pm.collectionVariables.get('classId'))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student sees published lessons",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/classes/{{classId}}/lessons" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().some(item => item.id === pm.collectionVariables.get('lessonId'))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student sees published assignments",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/classes/{{classId}}/assignments" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().some(item => item.id === pm.collectionVariables.get('assignmentId'))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student submits work",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Submission created from the LMS Postman collection.\"\n}" },
+            "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/submission"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.collectionVariables.set('submissionId', pm.response.json().id);", "pm.expect(pm.response.json().studentId).to.eql(pm.collectionVariables.get('studentId'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student can read only their submission",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/submission" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('submissionId'));", "pm.expect(pm.response.json().studentId).to.eql(pm.collectionVariables.get('studentId'));"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student cannot list users",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/users" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(403);"], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "3 - Teacher grading and logout",
+      "item": [
+        {
+          "name": "Login as teacher",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().role).to.eql('Teacher');"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Teacher sees submissions for assigned class",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/assignments/{{assignmentId}}/submissions" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().some(item => item.id === pm.collectionVariables.get('submissionId'))).to.eql(true);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Teacher updates assignment in assigned class",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated Postman assignment\",\n  \"description\": \"Updated by the assigned teacher.\",\n  \"dueDate\": \"2030-12-31T23:59:00Z\",\n  \"isPublished\": true\n}" },
+            "url": "{{baseUrl}}/api/assignments/{{assignmentId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().title).to.eql('Updated Postman assignment');"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Teacher grades submission",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"grade\": 9.5,\n  \"teacherComment\": \"Good work.\"\n}" },
+            "url": "{{baseUrl}}/api/submissions/{{submissionId}}/grade"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().grade).to.eql(9.5);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Teacher cannot create class",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Unauthorized class\",\n  \"teacherId\": \"{{teacherId}}\"\n}" },
+            "url": "{{baseUrl}}/api/classes"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(403);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Logout",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/auth/logout" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(204);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Identity requires login",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(401);"], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "4 - Availability approval and class enrollment",
+      "item": [
+        {
+          "name": "Login as teacher for availability",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{teacherEmail}}\",\n  \"password\": \"{{teacherPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Teacher proposes a future teaching time",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"startAt\": \"{{availabilityStart}}\",\n  \"endAt\": \"{{availabilityEnd}}\",\n  \"note\": \"Postman schedule test\"\n}" },
+            "url": "{{baseUrl}}/api/schedule/availabilities"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["const start = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);", "start.setUTCHours(9, 0, 0, 0);", "const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);", "pm.collectionVariables.set('availabilityStart', start.toISOString());", "pm.collectionVariables.set('availabilityEnd', end.toISOString());"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.collectionVariables.set('availabilityId', pm.response.json().id);"], "type": "text/javascript" } }
+          ]
+        },
+        {
+          "name": "Admin logs in to review availability",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Admin approves teacher availability",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"approve\": true\n}" },
+            "url": "{{baseUrl}}/api/schedule/availabilities/{{availabilityId}}/review"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(204);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Admin chooses class, subject and session time",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"classId\": \"{{classId}}\",\n  \"subjectId\": \"{{subjectId}}\",\n  \"startAt\": \"{{sessionStart}}\",\n  \"endAt\": \"{{sessionEnd}}\",\n  \"capacity\": 30\n}" },
+            "url": "{{baseUrl}}/api/schedule/sessions"
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "exec": ["const start = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);", "start.setUTCHours(9, 0, 0, 0);", "pm.collectionVariables.set('sessionStart', start.toISOString());", "pm.collectionVariables.set('sessionEnd', new Date(start.getTime() + 60 * 60 * 1000).toISOString());"], "type": "text/javascript" } },
+            { "listen": "test", "script": { "exec": ["pm.response.to.have.status(201);", "pm.expect(pm.response.json().subjectId).to.eql(pm.collectionVariables.get('subjectId'));", "pm.collectionVariables.set('sessionId', pm.response.json().id);"], "type": "text/javascript" } }
+          ]
+        },
+        {
+          "name": "Student logs in to enroll",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student enrolls in a scheduled class",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/schedule/sessions/{{sessionId}}/enrollment"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(204);"], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Student sees their enrolled session",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/schedule/sessions/{{sessionId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().isEnrolled).to.eql(true);"], "type": "text/javascript" } }]
+        }
+      ]
+    }
+  ]
+}

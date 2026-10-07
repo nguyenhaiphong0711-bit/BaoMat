@@ -1,0 +1,30 @@
+@model LMS.ViewModels.SubjectViewModel
+@{
+    ViewData["Title"] = ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "Chỉnh sửa môn học" : "Thêm môn học";
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">COURSE CATALOG</span><h1>@(ViewContext.RouteData.Values["action"]?.ToString() == "Edit" ? "Chỉnh sửa môn học" : "Thêm môn học")</h1></div>
+</div>
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <label asp-for="DepartmentId">Khoa</label>
+    <select asp-for="DepartmentId">
+        <option value="">-- Chọn khoa --</option>
+        @foreach (var department in (ViewBag.Departments as List<LMS.Models.Department> ?? new()))
+        {
+            <option value="@department.Id">@department.Code · @department.Name</option>
+        }
+    </select>
+    <span asp-validation-for="DepartmentId" class="error"></span>
+    <label asp-for="Code">Mã môn học</label>
+    <input asp-for="Code" placeholder="VD: CS101" />
+    <span asp-validation-for="Code" class="error"></span>
+    <label asp-for="Name">Tên môn học</label>
+    <input asp-for="Name" placeholder="VD: Lập trình căn bản" />
+    <span asp-validation-for="Name" class="error"></span>
+    <label asp-for="Description">Mô tả</label>
+    <textarea asp-for="Description" rows="4"></textarea>
+    <span asp-validation-for="Description" class="error"></span>
+    <div class="action-row"><button type="submit">Lưu môn học</button><a class="btn btn-ghost" asp-action="Index">Hủy</a></div>
+</form>

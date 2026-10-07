@@ -1,0 +1,42 @@
+@model LMS.ViewModels.SubjectCatalogViewModel
+@{
+    ViewData["Title"] = "Môn học";
+}
+
+<div class="title-row">
+    <div><span class="eyebrow">COURSE CATALOG</span><h1>Danh mục môn học</h1><p class="muted">Môn học được tổ chức theo khoa và liên kết trực tiếp với lớp, giảng viên, lịch học.</p></div>
+    <a class="btn" asp-action="Create">+ Thêm môn học</a>
+</div>
+<form method="get" class="filter-bar">
+    <input name="Query" value="@Model.Filter.Query" placeholder="Tìm mã môn, tên môn..." />
+    <select name="DepartmentId">
+        <option value="">Tất cả khoa</option>
+        @foreach (var department in Model.Departments)
+        {
+            <option value="@department.Id" selected="@(Model.Filter.DepartmentId == department.Id.ToString())">@department.Code · @department.Name</option>
+        }
+    </select>
+    <label>Tạo từ <input type="date" name="CreatedFrom" value="@Model.Filter.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến <input type="date" name="CreatedTo" value="@Model.Filter.CreatedTo?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index">Xóa lọc</a>
+</form>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>Mã môn</th><th>Tên môn</th><th>Khoa</th><th>Mô tả</th><th>Lớp</th><th>Thao tác</th></tr></thead>
+        <tbody>
+        @foreach (var subject in Model.Subjects)
+        {
+            <tr>
+                <td><span class="badge">@subject.Code</span></td><td><strong>@subject.Name</strong></td>
+                <td>@Model.DepartmentNames.GetValueOrDefault(subject.DepartmentId.ToString(), "Chưa phân khoa")</td>
+                <td>@subject.Description</td><td>@Model.ClassCounts.GetValueOrDefault(subject.Id.ToString())</td>
+                <td class="action-row"><a class="btn btn-secondary small" asp-action="Edit" asp-route-id="@subject.Id">Sửa</a>
+                    <form asp-action="Delete" asp-route-id="@subject.Id" method="post"><button class="btn btn-ghost small" type="submit" onclick="return confirm('Xóa môn học này?')">Xóa</button></form>
+                </td>
+            </tr>
+        }
+        @if (Model.Subjects.Count == 0) { <tr><td colspan="6" class="muted">Không tìm thấy môn học phù hợp.</td></tr> }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,40 @@
+@baseUrl = http://localhost:5000
+@departmentId = replace-with-created-id
+
+### Login as admin first; the HTTP client retains the authentication cookie
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@lms.com",
+  "password": "Admin@123"
+}
+
+### List departments
+GET {{baseUrl}}/api/departments
+
+### Create a department
+POST {{baseUrl}}/api/departments
+Content-Type: application/json
+
+{
+  "code": "ENG",
+  "name": "Engineering",
+  "description": "Engineering programs and subjects."
+}
+
+### Read a department
+GET {{baseUrl}}/api/departments/{{departmentId}}
+
+### Update a department
+PUT {{baseUrl}}/api/departments/{{departmentId}}
+Content-Type: application/json
+
+{
+  "code": "ENG",
+  "name": "Engineering and Technology",
+  "description": "Updated department description."
+}
+
+### Delete a department (returns 409 while subjects still reference it)
+DELETE {{baseUrl}}/api/departments/{{departmentId}}

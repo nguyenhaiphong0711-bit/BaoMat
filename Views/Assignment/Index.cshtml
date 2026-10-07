@@ -1,0 +1,68 @@
+@model List<LMS.Models.Assignment>
+@{
+    ViewData["Title"] = "Bài tập";
+}
+
+<div class="title-row">
+    <div><span class="eyebrow">@ViewBag.ClassName</span><h1>Bài tập</h1><p class="muted">Theo dõi yêu cầu, hạn nộp và phản hồi của giảng viên.</p></div>
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
+    {
+        <a class="btn" asp-action="Create" asp-route-classId="@ViewBag.ClassId">+ Tạo bài tập</a>
+    }
+</div>
+
+@{
+    var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+}
+<form method="get" class="filter-bar">
+    <input type="hidden" name="classId" value="@ViewBag.ClassId" />
+    <input name="Query" value="@filter.Query" placeholder="Tìm tiêu đề hoặc yêu cầu..." />
+    @if (!User.IsInRole(Roles.Student))
+    {
+        <select name="Status">
+            <option value="">Mọi trạng thái</option>
+            <option value="true" selected="@(filter.Status == "true")">Đã xuất bản</option>
+            <option value="false" selected="@(filter.Status == "false")">Bản nháp</option>
+        </select>
+    }
+    <label>Hạn từ <input type="date" name="StartFrom" value="@filter.StartFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến <input type="date" name="StartTo" value="@filter.StartTo?.ToString("yyyy-MM-dd")" /></label>
+    <label>Tạo từ <input type="date" name="CreatedFrom" value="@filter.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index" asp-route-classId="@ViewBag.ClassId">Xóa lọc</a>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><span class="empty-icon">▧</span><h2>Chưa có bài tập</h2><p class="muted">Bài tập và hạn nộp sẽ hiển thị tại đây.</p></div>
+}
+else
+{
+    <div class="assignment-grid">
+        @foreach (var x in Model)
+        {
+            <article class="card assignment-card">
+                <div class="title-row"><h3>@x.Title</h3><span class="badge @(x.DueDate > DateTime.UtcNow ? "badge-open" : "badge-muted")">@(x.DueDate > DateTime.UtcNow ? "Đang mở" : "Đã hết hạn")</span></div>
+                <p>@x.Description</p>
+                <small class="muted">Hạn nộp: @x.DueDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
+                @if (User.IsInRole(Roles.Student))
+                {
+                    @if (x.DueDate > DateTime.UtcNow)
+                    {
+                        <a class="btn" asp-controller="Submission" asp-action="Submit" asp-route-assignmentId="@x.Id">Mở bài nộp</a>
+                    }
+                }
+                else
+                {
+                    <div class="action-row">
+                        <a class="btn btn-secondary small" asp-controller="Submission" asp-action="Index" asp-route-assignmentId="@x.Id">Bài nộp</a>
+                        <a class="btn btn-ghost small" asp-action="Edit" asp-route-id="@x.Id">Chỉnh sửa</a>
+                        <form method="post" asp-action="Archive" asp-route-id="@x.Id">
+                            <button class="btn btn-danger-outline small" type="submit">Lưu trữ</button>
+                        </form>
+                    </div>
+                }
+            </article>
+        }
+    </div>
+}

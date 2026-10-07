@@ -1,0 +1,13 @@
+@model LMS.ViewModels.DepartmentViewModel
+@{
+    var isEdit = ViewContext.RouteData.Values["action"]?.ToString() == "Edit";
+    ViewData["Title"] = isEdit ? "Chỉnh sửa khoa" : "Thêm khoa";
+}
+<div class="page-heading"><div><span class="eyebrow">ACADEMIC STRUCTURE</span><h1>@ViewData["Title"]</h1></div></div>
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <label asp-for="Code">Mã khoa</label><input asp-for="Code" placeholder="VD: CNTT" /><span asp-validation-for="Code" class="error"></span>
+    <label asp-for="Name">Tên khoa</label><input asp-for="Name" placeholder="VD: Công nghệ thông tin" /><span asp-validation-for="Name" class="error"></span>
+    <label asp-for="Description">Mô tả</label><textarea asp-for="Description" rows="4"></textarea><span asp-validation-for="Description" class="error"></span>
+    <div class="action-row"><button type="submit">Lưu khoa</button><a class="btn btn-ghost" asp-action="Index">Hủy</a></div>
+</form>

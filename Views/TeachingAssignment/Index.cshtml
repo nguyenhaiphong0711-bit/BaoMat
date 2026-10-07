@@ -1,0 +1,70 @@
+@model List<LMS.ViewModels.TeachingAssignmentListItem>
+@{
+    ViewData["Title"] = "Phân công lớp";
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">CLASS OPERATIONS</span><h1>Phân công giảng dạy</h1></div>
+    <div class="action-row">
+        <a class="btn btn-secondary" asp-action="TeacherSubjects">Môn giảng viên</a>
+        <a class="btn" asp-controller="Class" asp-action="Create">+ Tạo lớp</a>
+    </div>
+</div>
+
+@{
+    var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+    var departments = ViewBag.Departments as List<LMS.Models.Department> ?? new();
+    var subjects = ViewBag.Subjects as List<LMS.Models.Subject> ?? new();
+}
+<form method="get" class="filter-bar">
+    <input name="Query" value="@filter.Query" placeholder="Tìm lớp, môn hoặc giảng viên..." />
+    <select name="DepartmentId" id="filterDepartment">
+        <option value="">Tất cả khoa</option>
+        @foreach (var department in departments)
+        {
+            <option value="@department.Id" selected="@(filter.DepartmentId == department.Id.ToString())">@department.Code · @department.Name</option>
+        }
+    </select>
+    <select name="SubjectId" id="filterSubject">
+        <option value="">Tất cả môn</option>
+        @foreach (var subject in subjects)
+        {
+            <option value="@subject.Id" data-department="@subject.DepartmentId" selected="@(filter.SubjectId == subject.Id.ToString())">@subject.Code · @subject.Name</option>
+        }
+    </select>
+    <label>Tạo từ <input type="date" name="CreatedFrom" value="@filter.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến <input type="date" name="CreatedTo" value="@filter.CreatedTo?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index">Xóa lọc</a>
+</form>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>Lớp học</th><th>Môn học</th><th>Giảng viên phụ trách</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td><strong>@item.ClassName</strong></td>
+                    <td><span class="badge">@item.SubjectName</span></td>
+                    <td>@item.TeacherName</td>
+                    <td>@item.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td><a class="btn btn-secondary small" asp-action="Assign" asp-route-classId="@item.ClassId">Phân công / thay đổi</a></td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="5" class="muted">Không tìm thấy lớp hoặc phân công phù hợp.</td></tr> }
+        </tbody>
+    </table>
+</div>
+<script>
+    const departmentFilter = document.getElementById("filterDepartment");
+    const subjectFilter = document.getElementById("filterSubject");
+    function filterSubjects() {
+        for (const option of subjectFilter.options) {
+            if (!option.value) continue;
+            option.hidden = !!departmentFilter.value && option.dataset.department !== departmentFilter.value;
+            if (option.hidden && option.selected) subjectFilter.value = "";
+        }
+    }
+    departmentFilter.addEventListener("change", filterSubjects);
+    filterSubjects();
+</script>

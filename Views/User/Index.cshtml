@@ -1,0 +1,52 @@
+@model List<LMS.Models.User>
+@{
+    ViewData["Title"] = "Người dùng";
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">ACCESS MANAGEMENT</span><h1>Người dùng</h1><p class="muted">Quản lý tài khoản, vai trò và trạng thái truy cập.</p></div>
+    <a class="btn" asp-action="Create">+ Tạo tài khoản</a>
+</div>
+
+@{
+    var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+}
+<form method="get" class="filter-bar">
+    <input name="Query" value="@filter.Query" placeholder="Tìm họ tên hoặc email..." />
+    <select name="Role">
+        <option value="">Tất cả vai trò</option>
+        @foreach (var role in new[] { LMS.Models.Roles.Admin, LMS.Models.Roles.Teacher, LMS.Models.Roles.Student })
+        {
+            <option value="@role" selected="@(filter.Role == role)">@role</option>
+        }
+    </select>
+    <select name="Status">
+        <option value="">Mọi trạng thái</option>
+        <option value="true" selected="@(filter.Status == "true")">Đang hoạt động</option>
+        <option value="false" selected="@(filter.Status == "false")">Đã vô hiệu hóa</option>
+    </select>
+    <label>Tạo từ <input type="date" name="CreatedFrom" value="@filter.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến <input type="date" name="CreatedTo" value="@filter.CreatedTo?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index">Xóa lọc</a>
+</form>
+
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>Tài khoản</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+        <tbody>
+            @foreach (var x in Model)
+            {
+                <tr>
+                    <td><strong>@x.FullName</strong><br /><small class="muted">Tham gia @x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</small></td>
+                    <td>@x.Email</td>
+                    <td><span class="badge">@x.Role</span></td>
+                    <td><span class="badge @(x.IsActive ? "badge-open" : "badge-muted")">@(x.IsActive ? "Đang hoạt động" : "Đã vô hiệu hóa")</span></td>
+                    <td>@x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
+                    <td><form method="post" asp-action="Toggle" asp-route-id="@x.Id"><button class="btn @(x.IsActive ? "btn-danger-outline" : "btn-secondary") small">@(x.IsActive ? "Vô hiệu hóa" : "Kích hoạt")</button></form></td>
+                </tr>
+            }
+            @if (Model.Count == 0) { <tr><td colspan="6" class="muted">Không tìm thấy tài khoản phù hợp.</td></tr> }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,87 @@
+@model List<LMS.Models.ClassRoom>
+@{
+    ViewData["Title"] = User.IsInRole(Roles.Student) ? "Lớp của tôi" : "Lớp học";
+    var subjectNames = ViewBag.SubjectNames as Dictionary<MongoDB.Bson.ObjectId, string> ?? new();
+    var teachers = ViewBag.TeacherNames as Dictionary<string, string> ?? new();
+    var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+    var subjects = ViewBag.Subjects as List<LMS.Models.Subject> ?? new();
+    var departments = ViewBag.Departments as List<LMS.Models.Department> ?? new();
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">LEARNING SPACE</span><h1>@ViewData["Title"]</h1><p class="muted">Môn học, thành viên và nội dung được tổ chức theo từng lớp.</p></div>
+    @if (User.IsInRole(Roles.Admin))
+    {
+        <a class="btn" asp-action="Create">+ Tạo lớp học</a>
+    }
+</div>
+
+<form method="get" class="filter-bar">
+    <input name="Query" value="@filter.Query" placeholder="Tìm lớp, môn, giảng viên hoặc học viên..." />
+    <select name="DepartmentId" id="filterDepartment">
+        <option value="">Tất cả khoa</option>
+        @foreach (var department in departments)
+        {
+            <option value="@department.Id" selected="@(filter.DepartmentId == department.Id.ToString())">@department.Code · @department.Name</option>
+        }
+    </select>
+    <select name="SubjectId" id="filterSubject">
+        <option value="">Tất cả môn</option>
+        @foreach (var subject in subjects)
+        {
+            <option value="@subject.Id" data-department="@subject.DepartmentId" selected="@(filter.SubjectId == subject.Id.ToString())">@subject.Code · @subject.Name</option>
+        }
+    </select>
+    <label>Tạo từ <input type="date" name="CreatedFrom" value="@filter.CreatedFrom?.ToString("yyyy-MM-dd")" /></label>
+    <label>Đến <input type="date" name="CreatedTo" value="@filter.CreatedTo?.ToString("yyyy-MM-dd")" /></label>
+    <button class="btn btn-secondary" type="submit">Lọc</button>
+    <a class="btn btn-ghost" asp-action="Index">Xóa lọc</a>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state"><span class="empty-icon">▤</span><h2>Chưa có lớp học</h2><p class="muted">Các lớp bạn tham gia sẽ xuất hiện tại đây.</p></div>
+}
+else
+{
+    <div class="grid">
+        @foreach (var x in Model)
+        {
+            <article class="card class-card">
+                <div class="title-row">
+                    <h3>@x.Name</h3>
+                    <span class="badge">@subjectNames.GetValueOrDefault(x.SubjectId, "Chưa gán môn")</span>
+                </div>
+                <p class="muted">Giảng viên: @teachers.GetValueOrDefault(x.TeacherId.ToString(), "Chưa phân công")</p>
+                <p class="muted">Khoa: @departments.FirstOrDefault(d => d.Id.ToString() == subjects.FirstOrDefault(s => s.Id == x.SubjectId)?.DepartmentId.ToString())?.Name</p>
+                <p>@(string.IsNullOrWhiteSpace(x.Description) ? "Chưa có mô tả cho lớp học này." : x.Description)</p>
+                <div class="class-card-actions">
+                    <a asp-action="Details" asp-route-id="@x.Id">Chi tiết lớp</a>
+                    <a asp-controller="Lesson" asp-action="Index" asp-route-classId="@x.Id">Bài học</a>
+                    <a asp-controller="Assignment" asp-action="Index" asp-route-classId="@x.Id">Bài tập</a>
+                    <a asp-controller="Schedule" asp-action="Index" asp-route-classId="@x.Id">Lịch học</a>
+                    @if (User.IsInRole(Roles.Admin))
+                    {
+                        <a asp-action="Edit" asp-route-id="@x.Id">Chỉnh sửa</a>
+                        <form method="post" asp-action="Archive" asp-route-id="@x.Id" class="inline-form">
+                            <button class="btn btn-danger-outline small" type="submit">Lưu trữ</button>
+                        </form>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+}
+<script>
+    const departmentFilter = document.getElementById("filterDepartment");
+    const subjectFilter = document.getElementById("filterSubject");
+    function filterSubjects() {
+        for (const option of subjectFilter.options) {
+            if (!option.value) continue;
+            option.hidden = !!departmentFilter.value && option.dataset.department !== departmentFilter.value;
+            if (option.hidden && option.selected) subjectFilter.value = "";
+        }
+    }
+    departmentFilter.addEventListener("change", filterSubjects);
+    filterSubjects();
+</script>

@@ -1,0 +1,72 @@
+@model LMS.ViewModels.SessionDetailsViewModel
+@{
+    ViewData["Title"] = "Chi tiết buổi học";
+    var session = Model.Session;
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">@session.ClassName</span>
+        <h1>Chi tiết buổi học</h1>
+        <p class="muted">@session.StartAt.ToLocalTime().ToString("dddd, dd/MM/yyyy · HH:mm") – @session.EndAt.ToLocalTime().ToString("HH:mm")</p>
+    </div>
+    <a class="btn btn-ghost" asp-action="Index">Quay lại lịch</a>
+</div>
+
+<div class="detail-grid">
+    <section class="card detail-card">
+        <span class="eyebrow">BUỔI HỌC</span>
+        <h2>@session.ClassName</h2>
+        <dl class="detail-list">
+            <dt>Môn học</dt><dd>@session.SubjectName</dd>
+            <dt>Giảng viên</dt><dd>@session.TeacherName</dd>
+            <dt>Thời gian</dt><dd>@session.StartAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm") – @session.EndAt.ToLocalTime().ToString("HH:mm")</dd>
+            <dt>Đăng ký</dt><dd>@session.EnrolledCount / @session.Capacity học viên</dd>
+            <dt>Trạng thái</dt><dd><span class="badge @(session.Status == ScheduleStatuses.Scheduled ? "badge-open" : "badge-muted")">@session.Status</span></dd>
+        </dl>
+        @if (session.Status == ScheduleStatuses.Cancelled)
+        {
+            <div class="notice notice-danger">Buổi học đã hủy: @session.CancellationReason. Lịch sử đăng ký được lưu lại.</div>
+        }
+        @if (User.IsInRole(Roles.Student) && session.Status == ScheduleStatuses.Scheduled && !session.IsEnrolled)
+        {
+            <form method="post" asp-action="Enroll" asp-route-id="@session.Id"><button type="submit">Đăng ký buổi học</button></form>
+        }
+        @if (User.IsInRole(Roles.Student) && session.IsEnrolled && session.Status == ScheduleStatuses.Scheduled)
+        {
+            <form method="post" asp-action="Withdraw" asp-route-id="@session.Id"><button class="btn btn-danger-outline" type="submit">Hủy đăng ký</button></form>
+        }
+    </section>
+
+    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
+    {
+        <section class="card detail-card">
+            <div class="title-row"><div><span class="eyebrow">ROSTER</span><h2>Danh sách đăng ký</h2></div><span class="badge badge-open">@session.EnrolledCount học viên</span></div>
+            @if (Model.Students.Count == 0)
+            {
+                <p class="muted">Chưa có học viên đăng ký.</p>
+            }
+            else
+            {
+                <div class="roster-list">
+                    @foreach (var student in Model.Students)
+                    {
+                        <div class="roster-row">
+                            <div class="avatar">@student.FullName.Substring(0, 1).ToUpperInvariant()</div>
+                            <div><strong>@student.FullName</strong><small>@student.Email</small></div>
+                            <span class="badge @(student.Status == ScheduleStatuses.Active ? "badge-enrolled" : "badge-muted")">@student.Status</span>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@if ((User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher)) && session.Status == ScheduleStatuses.Scheduled)
+{
+    <form method="post" asp-action="Cancel" asp-route-id="@session.Id" class="inline-cancel">
+        <label for="Reason">Hủy buổi học (lịch sử vẫn được giữ)</label>
+        <div class="action-row"><input id="Reason" name="Reason" required minlength="3" maxlength="500" placeholder="Nhập lý do hủy" /><button class="btn btn-danger" type="submit">Hủy buổi học</button></div>
+    </form>
+}

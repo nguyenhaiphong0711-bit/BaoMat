@@ -1,0 +1,23 @@
+@model LMS.ViewModels.AssignmentViewModel
+@{
+    ViewData["Title"] = "Chỉnh sửa bài tập";
+}
+
+<div class="page-heading"><div><span class="eyebrow">@ViewBag.ClassName</span><h1>Chỉnh sửa bài tập</h1><p class="muted">Cập nhật yêu cầu và hạn nộp.</p></div></div>
+
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <label asp-for="Title">Tiêu đề</label>
+    <input asp-for="Title" />
+    <span asp-validation-for="Title" class="error"></span>
+
+    <label asp-for="Description">Yêu cầu bài tập</label>
+    <textarea asp-for="Description" rows="6"></textarea>
+    <span asp-validation-for="Description" class="error"></span>
+
+    <label asp-for="DueDate">Hạn nộp</label>
+    <input asp-for="DueDate" type="datetime-local" />
+
+    <label><input asp-for="IsPublished" /> Đã xuất bản</label>
+    <div class="action-row"><button type="submit">Lưu thay đổi</button><a class="btn btn-ghost" asp-controller="Assignment" asp-action="Index" asp-route-classId="@ViewBag.ClassId">Hủy</a></div>
+</form>

@@ -1,0 +1,59 @@
+@model LMS.ViewModels.TeacherSubjectsViewModel
+@{
+    ViewData["Title"] = "Môn giảng viên";
+    var teachers = ViewData["Teachers"] as List<LMS.Models.User> ?? new();
+    var subjects = ViewData["Subjects"] as List<LMS.Models.Subject> ?? new();
+    var departments = ViewBag.Departments as List<LMS.Models.Department> ?? new();
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">TEACHER PROFILE</span><h1>Môn giảng viên phụ trách</h1><p class="muted">Chọn chuyên môn giảng dạy để hệ thống chỉ gợi ý giáo viên phù hợp khi tạo lớp.</p></div>
+</div>
+<form method="get" class="filter-bar">
+    <label for="teacherPicker">Giảng viên</label>
+    <select id="teacherPicker" name="teacherId" onchange="this.form.submit()">
+        @foreach (var teacher in teachers)
+        {
+            <option value="@teacher.Id" selected="@(Model.TeacherId == teacher.Id.ToString())">@teacher.FullName · @teacher.Email</option>
+        }
+    </select>
+    <noscript><button class="btn btn-secondary" type="submit">Chọn</button></noscript>
+</form>
+<form method="post" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <input asp-for="TeacherId" type="hidden" />
+    @if (teachers.Count == 0)
+    {
+        <div class="empty-state compact"><h2>Chưa có giảng viên</h2><p>Tạo tài khoản giảng viên trước.</p></div>
+    }
+    else if (subjects.Count == 0)
+    {
+        <div class="empty-state compact"><h2>Chưa có môn học</h2><p>Tạo danh mục môn học trước khi phân công.</p></div>
+    }
+    else
+    {
+        <label asp-for="SubjectIds">Các môn có thể giảng dạy</label>
+        <select asp-for="SubjectIds" multiple size="8">
+            @foreach (var department in departments)
+            {
+                var departmentSubjects = subjects.Where(subject => subject.DepartmentId == department.Id).ToList();
+                if (departmentSubjects.Count > 0)
+                {
+                    <optgroup label="@department.Code · @department.Name">
+                        @foreach (var subject in departmentSubjects)
+                        {
+                            <option value="@subject.Id">@subject.Code · @subject.Name</option>
+                        }
+                    </optgroup>
+                }
+            }
+            @foreach (var subject in subjects.Where(subject => departments.All(department => department.Id != subject.DepartmentId)))
+            {
+                <option value="@subject.Id">@subject.Code · @subject.Name (chưa phân khoa)</option>
+            }
+        </select>
+        <span asp-validation-for="SubjectIds" class="error"></span>
+        <p class="muted">Giữ Ctrl (Windows) hoặc Command (Mac) để chọn nhiều môn.</p>
+        <button type="submit">Lưu môn giảng dạy</button>
+    }
+</form>

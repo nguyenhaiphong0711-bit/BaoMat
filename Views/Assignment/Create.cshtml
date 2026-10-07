@@ -1,0 +1,25 @@
+@model LMS.ViewModels.AssignmentViewModel
+@{
+    ViewData["Title"] = "Tạo bài tập";
+}
+
+<div class="page-heading"><div><span class="eyebrow">@ViewBag.ClassName</span><h1>Tạo bài tập</h1><p class="muted">Đặt yêu cầu, hạn nộp và trạng thái hiển thị.</p></div></div>
+<form method="post" asp-route-classId="@ViewBag.ClassId" class="form form-card">
+    <div asp-validation-summary="All" class="error"></div>
+    <label asp-for="Title">Tiêu đề</label>
+    <input asp-for="Title" />
+    <span asp-validation-for="Title" class="error"></span>
+
+    <label asp-for="Description">Yêu cầu bài tập</label>
+    <textarea asp-for="Description" rows="6"></textarea>
+    <span asp-validation-for="Description" class="error"></span>
+
+    <label asp-for="DueDate">Hạn nộp</label>
+    <input asp-for="DueDate" type="datetime-local" />
+
+    <label>
+        <input asp-for="IsPublished" /> Xuất bản ngay
+    </label>
+
+    <button type="submit">Tạo bài tập</button>
+</form>
