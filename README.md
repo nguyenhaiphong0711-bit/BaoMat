@@ -30,6 +30,22 @@ dotnet run
 
 Mở `http://localhost:5000`.
 
+## Deploy lên Render bằng Docker
+1. Đẩy project lên GitHub và tạo một **Web Service** trên Render, chọn repository này và runtime **Docker**. Render sẽ dùng `Dockerfile` ở thư mục gốc.
+2. Tạo MongoDB database có thể truy cập từ Render (ví dụ MongoDB Atlas), sau đó thêm các Environment Variables cho Web Service:
+
+   | Key | Value |
+   |---|---|
+   | `MongoDb__ConnectionString` | MongoDB connection URI |
+   | `MongoDb__DatabaseName` | `LMS_Secure` hoặc tên database mong muốn |
+   | `ASPNETCORE_ENVIRONMENT` | `Production` |
+
+   Đặt URI trong Render, không commit credentials vào repository. Không dùng `localhost` làm MongoDB host trên Render: trong container, `localhost` trỏ tới chính container ứng dụng.
+3. Chọn **Create Web Service**. Container bind tới `0.0.0.0` và dùng biến `PORT` Render cung cấp (mặc định dự phòng `10000`).
+4. Đảm bảo MongoDB cho phép kết nối mạng từ dịch vụ Render, sau đó mở URL được Render cấp.
+
+**Lưu ý bảo mật:** ứng dụng hiện tự tạo tài khoản demo khi collection `Users` còn trống (`admin@lms.com` / `Admin@123`, cùng tài khoản Teacher/Student demo). Không để các thông tin này làm tài khoản production; trước khi public, hãy chuẩn bị tài khoản quản trị riêng và thay đổi hoặc loại bỏ credentials demo.
+
 ## Tài khoản demo
 - Admin: `admin@lms.com` / `Admin@123`
 - Teacher: `teacher@lms.com` / `Teacher@123`
