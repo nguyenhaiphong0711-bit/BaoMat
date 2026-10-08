@@ -8,6 +8,7 @@
     var students = ViewData["Students"] as List<LMS.Models.User> ?? new();
     var subjects = ViewData["Subjects"] as List<LMS.Models.Subject> ?? new();
     var departments = ViewBag.Departments as List<LMS.Models.Department> ?? new();
+    var terms = ViewBag.Terms as List<LMS.Models.AcademicTerm> ?? new();
 }
 
 <div class="page-heading"><div><span class="eyebrow">CLASS MANAGEMENT</span><h1>Chỉnh sửa lớp</h1><p class="muted">Cập nhật môn học, giảng viên và danh sách học viên.</p></div></div>
@@ -38,6 +39,20 @@
         }
     </select>
     <span asp-validation-for="SubjectId" class="error"></span>
+
+    <label asp-for="AcademicTermId">Học kỳ mở lớp</label>
+    <select asp-for="AcademicTermId">
+        <option value="">-- Chọn học kỳ --</option>
+        @foreach (var term in terms)
+        {
+            <option value="@term.Id">@term.Name (@term.AcademicYear)@(term.IsActive ? " · Đang áp dụng" : "")</option>
+        }
+    </select>
+    <span asp-validation-for="AcademicTermId" class="error"></span>
+
+    <label asp-for="EnrollmentCapacity">Sĩ số tối đa</label>
+    <input asp-for="EnrollmentCapacity" type="number" min="1" max="500" />
+    <span asp-validation-for="EnrollmentCapacity" class="error"></span>
 
     <label asp-for="TeacherId">Giảng viên phụ trách</label>
     <select asp-for="TeacherId">

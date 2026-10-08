@@ -1,0 +1,70 @@
+@model List<LMS.ViewModels.CourseRegistrationItemViewModel>
+@{
+    ViewData["Title"] = "Đăng ký môn/lớp";
+    var student = ViewBag.Student as LMS.Models.User;
+    var term = ViewBag.ActiveTerm as LMS.Models.AcademicTerm;
+    var canManageRegistration = User.IsInRole(Roles.Admin) ||
+        User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.CourseRegistrationManage);
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">COURSE REGISTRATION · @(term?.Name ?? "Chưa có học kỳ")</span><h1>Đăng ký môn và lớp</h1><p class="muted">Các lớp hiển thị theo ngành học, học kỳ hiện tại và danh sách môn được quản trị viên cấu hình. Yêu cầu chỉ có hiệu lực sau khi quản trị viên duyệt.</p></div>
+</div>
+
+@if (student?.ProgramId is null)
+{
+    <div class="notice notice-danger">Tài khoản chưa được gán ngành/chương trình đào tạo. Liên hệ quản trị viên để cập nhật hồ sơ trước khi đăng ký lớp.</div>
+}
+else if (Model.Count == 0)
+{
+    <div class="empty-state"><span class="empty-icon">▦</span><h2>Chưa có lớp phù hợp đang mở</h2><p class="muted">Kiểm tra kỳ đăng ký, đề cương chương trình hoặc liên hệ khoa.</p></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Mã môn</th><th>Môn học</th><th>Lớp</th><th>Giảng viên</th><th>Sĩ số</th><th>Đăng ký</th></tr></thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><strong>@item.SubjectCode</strong></td>
+                        <td>@item.SubjectName</td>
+                        <td>@item.ClassName</td>
+                        <td>@item.TeacherName</td>
+                        <td>@item.Enrolled / @item.Capacity</td>
+                        <td>
+                            @if (!canManageRegistration)
+                            {
+                                <span class="muted">Chỉ xem</span>
+                            }
+                            else if (item.IsPending)
+                            {
+                                <form method="post" asp-action="Withdraw" asp-route-classId="@item.ClassId">
+                                    <button class="btn btn-danger-outline small" type="submit">Hủy yêu cầu</button>
+                                </form>
+                                <span class="badge badge-pending">Chờ admin duyệt</span>
+                            }
+                            else if (item.IsRegistered)
+                            {
+                                <form method="post" asp-action="Withdraw" asp-route-classId="@item.ClassId">
+                                    <button class="btn btn-danger-outline small" type="submit">Rút lớp</button>
+                                </form>
+                            }
+                            else if (item.Enrolled < item.Capacity)
+                            {
+                                <form method="post" asp-action="Register" asp-route-classId="@item.ClassId">
+                                    <button class="btn small" type="submit">Gửi yêu cầu</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="badge badge-muted">Đã đủ chỗ</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

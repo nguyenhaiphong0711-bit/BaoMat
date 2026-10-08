@@ -3,6 +3,10 @@
     ViewData["Title"] = "Chỉnh sửa bài tập";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/filepond/filepond.min.css" asp-append-version="true" />
+}
+
 <div class="page-heading"><div><span class="eyebrow">@ViewBag.ClassName</span><h1>Chỉnh sửa bài tập</h1><p class="muted">Cập nhật yêu cầu và hạn nộp.</p></div></div>
 
 <form method="post" class="form form-card">
@@ -15,9 +19,34 @@
     <textarea asp-for="Description" rows="6"></textarea>
     <span asp-validation-for="Description" class="error"></span>
 
+    <label for="assignment-files">Tài liệu đính kèm</label>
+    <input id="assignment-files" type="file" data-filepond
+           data-process-url="@Url.Action("AssignmentAttachment", "Upload", new { classId = ViewBag.ClassId })"
+           data-revert-url="@Url.Action("Revert", "Upload")" data-ids-target="UploadedFileIds" />
+    <input asp-for="UploadedFileIds" type="hidden" />
+    <span asp-validation-for="UploadedFileIds" class="error"></span>
+    @if (ViewBag.AssignmentAttachments is IEnumerable<LMS.Models.StoredFileReference> attachments && attachments.Any())
+    {
+        <div class="uploaded-files">
+            @foreach (var attachment in attachments)
+            {
+                <div class="uploaded-file" data-uploaded-file>
+                    <a asp-controller="File" asp-action="Download" asp-route-id="@attachment.Id">@attachment.FileName</a>
+                    <button type="button" class="btn btn-ghost small" data-remove-uploaded-file="@attachment.Id" data-ids-target="UploadedFileIds">Gỡ tệp</button>
+                </div>
+            }
+        </div>
+    }
+    <small class="muted">Tối đa 5 tệp, mỗi tệp tối đa 25 MB. PDF, Office, TXT, CSV, ZIP, PNG, JPG.</small>
+
     <label asp-for="DueDate">Hạn nộp</label>
     <input asp-for="DueDate" type="datetime-local" />
 
     <label><input asp-for="IsPublished" /> Đã xuất bản</label>
     <div class="action-row"><button type="submit">Lưu thay đổi</button><a class="btn btn-ghost" asp-controller="Assignment" asp-action="Index" asp-route-classId="@ViewBag.ClassId">Hủy</a></div>
 </form>
+
+@section Scripts {
+    <script src="~/filepond/filepond.min.js" asp-append-version="true"></script>
+    <script src="~/js/filepond-lms.js" asp-append-version="true"></script>
+}

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using System.Security.Claims;
+using LMS.Security;
 
 namespace LMS.Controllers;
 
@@ -25,6 +26,7 @@ public sealed class ApiController : ControllerBase
     private readonly SubmissionService _submissions;
     private readonly ActivityLogService _activityLogs;
     private readonly ScheduleService _schedules;
+    private readonly AcademicService _academics;
 
     public ApiController(
         AuthService auth,
@@ -36,7 +38,8 @@ public sealed class ApiController : ControllerBase
         AssignmentService assignments,
         SubmissionService submissions,
         ActivityLogService activityLogs,
-        ScheduleService schedules)
+        ScheduleService schedules,
+        AcademicService academics)
     {
         _auth = auth;
         _users = users;
@@ -48,6 +51,7 @@ public sealed class ApiController : ControllerBase
         _submissions = submissions;
         _activityLogs = activityLogs;
         _schedules = schedules;
+        _academics = academics;
     }
 
     [AllowAnonymous]
@@ -76,7 +80,7 @@ public sealed class ApiController : ControllerBase
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role)
-        };
+        }.Concat(user.PermissionCodes.Select(code => new Claim(PermissionCodes.ClaimType, code))).ToArray();
 
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
@@ -92,7 +96,8 @@ public sealed class ApiController : ControllerBase
             User.FindFirstValue(ClaimTypes.NameIdentifier)!,
             User.Identity?.Name ?? "",
             User.FindFirstValue(ClaimTypes.Email) ?? "",
-            User.FindFirstValue(ClaimTypes.Role) ?? ""));
+            User.FindFirstValue(ClaimTypes.Role) ?? "",
+            User.FindAll(PermissionCodes.ClaimType).Select(claim => claim.Value).ToArray()));
 
     [HttpPost("auth/logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -334,6 +339,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("classes")]
+    [RequirePermission(PermissionCodes.ClassesView)]
     [ProducesResponseType<IReadOnlyList<ApiClassResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetClasses()
     {
@@ -344,6 +350,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("classes/{id}")]
+    [RequirePermission(PermissionCodes.ClassesView)]
     [ProducesResponseType<ApiClassResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -389,6 +396,16 @@ public sealed class ApiController : ControllerBase
                 Instance = HttpContext.Request.Path
             });
         var studentIds = request.StudentIds.Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var termId = ObjectId.TryParse(request.AcademicTermId, out var requestedTermId)
+            ? requestedTermId
+            : (await _academics.GetActiveTermAsync())?.Id ?? ObjectId.Empty;
+        if (termId == ObjectId.Empty || request.EnrollmentCapacity < studentIds.Length)
+            return BadRequest(new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Cần chọn học kỳ hợp lệ và sĩ số tối đa không được thấp hơn số học viên hiện có.",
+                Instance = HttpContext.Request.Path
+            });
         var students = await Task.WhenAll(studentIds.Select(_users.GetAsync));
         if (teacher is not { IsActive: true, Role: Roles.Teacher } ||
             students.Any(student => student is not { IsActive: true, Role: Roles.Student }))
@@ -407,6 +424,8 @@ public sealed class ApiController : ControllerBase
             Description = request.Description,
             SubjectId = request.SubjectId,
             TeacherId = request.TeacherId,
+            AcademicTermId = termId.ToString(),
+            EnrollmentCapacity = request.EnrollmentCapacity,
             StudentIds = studentIds.ToList()
         });
         var response = ToClassResponse(classroom);
@@ -444,7 +463,8 @@ public sealed class ApiController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateClass(string id, ApiCreateClassRequest request)
     {
-        if (await _classes.GetAsync(id) is null)
+        var currentClass = await _classes.GetAsync(id);
+        if (currentClass is null)
             return NotFound();
         if (request.StudentIds is null ||
             !ObjectId.TryParse(request.TeacherId, out _) ||
@@ -464,6 +484,10 @@ public sealed class ApiController : ControllerBase
             Description = request.Description,
             SubjectId = request.SubjectId,
             TeacherId = request.TeacherId,
+            AcademicTermId = string.IsNullOrWhiteSpace(request.AcademicTermId)
+                ? currentClass.AcademicTermId?.ToString() ?? ""
+                : request.AcademicTermId,
+            EnrollmentCapacity = request.EnrollmentCapacity,
             StudentIds = request.StudentIds.ToList()
         });
         if (!updated)
@@ -496,6 +520,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("classes/{classId}/lessons")]
+    [RequirePermission(PermissionCodes.LessonsView)]
     [ProducesResponseType<IReadOnlyList<ApiLessonResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLessons(string classId)
     {
@@ -513,6 +538,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("lessons/{id}")]
+    [RequirePermission(PermissionCodes.LessonsView)]
     [ProducesResponseType<ApiLessonResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -535,7 +561,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPost("classes/{classId}/lessons")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage)]
     [ProducesResponseType<ApiLessonResponse>(StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateLesson(string classId, ApiLessonRequest request)
     {
@@ -558,7 +584,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPut("lessons/{id}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage)]
     [ProducesResponseType<ApiLessonResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -584,7 +610,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpDelete("lessons/{id}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -602,6 +628,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("classes/{classId}/assignments")]
+    [RequirePermission(PermissionCodes.AssignmentsView)]
     [ProducesResponseType<IReadOnlyList<ApiAssignmentResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAssignments(string classId)
     {
@@ -618,6 +645,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("assignments/{id}")]
+    [RequirePermission(PermissionCodes.AssignmentsView)]
     [ProducesResponseType<ApiAssignmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -639,7 +667,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPost("classes/{classId}/assignments")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.AssignmentsManage)]
     [ProducesResponseType<ApiAssignmentResponse>(StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateAssignment(string classId, ApiAssignmentRequest request)
     {
@@ -663,7 +691,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPut("assignments/{id}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.AssignmentsManage)]
     [ProducesResponseType<ApiAssignmentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -690,7 +718,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpDelete("assignments/{id}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.AssignmentsManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -708,7 +736,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("assignments/{assignmentId}/submissions")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.SubmissionsReview)]
     [ProducesResponseType<IReadOnlyList<ApiSubmissionResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSubmissions(string assignmentId)
     {
@@ -725,7 +753,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("assignments/{assignmentId}/submission")]
-    [Authorize(Roles = Roles.Student)]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.SubmissionsSubmit)]
     [ProducesResponseType<ApiSubmissionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -745,7 +773,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPut("assignments/{assignmentId}/submission")]
-    [Authorize(Roles = Roles.Student)]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.SubmissionsSubmit)]
     [ProducesResponseType<ApiSubmissionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -770,7 +798,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPut("submissions/{id}/grade")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.SubmissionsReview)]
     [ProducesResponseType<ApiSubmissionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -810,6 +838,7 @@ public sealed class ApiController : ControllerBase
             AsUtcOffset(log.CreatedAt))));
 
     [HttpGet("schedule/availabilities")]
+    [RequirePermission(PermissionCodes.ScheduleView)]
     [ProducesResponseType<IReadOnlyList<ApiTeacherAvailabilityResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAvailabilities()
     {
@@ -829,7 +858,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPost("schedule/availabilities")]
-    [Authorize(Roles = Roles.Teacher)]
+    [Authorize(Roles = Roles.Teacher), RequirePermission(PermissionCodes.ScheduleAvailability)]
     [ProducesResponseType<ApiTeacherAvailabilityResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AddAvailability(ApiTeacherAvailabilityRequest request)
@@ -894,6 +923,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("schedule/sessions")]
+    [RequirePermission(PermissionCodes.ScheduleView)]
     [ProducesResponseType<IReadOnlyList<ApiSessionResponse>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetSessions()
     {
@@ -904,6 +934,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpGet("schedule/sessions/{id}")]
+    [RequirePermission(PermissionCodes.ScheduleView)]
     [ProducesResponseType<ApiSessionResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetSession(string id)
@@ -916,7 +947,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpPost("schedule/sessions/{id}/enrollment")]
-    [Authorize(Roles = Roles.Student)]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.ScheduleEnroll)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> EnrollInSession(string id)
@@ -931,7 +962,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpDelete("schedule/sessions/{id}/enrollment")]
-    [Authorize(Roles = Roles.Student)]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.ScheduleEnroll)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> WithdrawFromSession(string id)
@@ -944,7 +975,7 @@ public sealed class ApiController : ControllerBase
     }
 
     [HttpDelete("schedule/sessions/{id}")]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.ScheduleManage)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -967,14 +998,15 @@ public sealed class ApiController : ControllerBase
         _users.GetAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "");
 
     private static ApiIdentityResponse ToIdentityResponse(User user) =>
-        new(user.Id.ToString(), user.FullName, user.Email, user.Role);
+        new(user.Id.ToString(), user.FullName, user.Email, user.Role, user.PermissionCodes);
 
     private static ApiUserResponse ToUserResponse(User user) =>
         new(user.Id.ToString(), user.FullName, user.Email, user.Role, user.IsActive, AsUtcOffset(user.CreatedAt));
 
     private static ApiClassResponse ToClassResponse(ClassRoom classroom) =>
         new(classroom.Id.ToString(), classroom.Name, classroom.Description, classroom.SubjectId.ToString(), classroom.TeacherId.ToString(),
-            classroom.StudentIds.Select(id => id.ToString()).ToArray(), AsUtcOffset(classroom.CreatedAt));
+            classroom.StudentIds.Select(id => id.ToString()).ToArray(), AsUtcOffset(classroom.CreatedAt),
+            classroom.AcademicTermId?.ToString(), classroom.EnrollmentCapacity);
 
     private static ApiSubjectResponse ToSubjectResponse(Subject subject) =>
         new(subject.Id.ToString(), subject.DepartmentId.ToString(), subject.Code, subject.Name, subject.Description, AsUtcOffset(subject.CreatedAt));

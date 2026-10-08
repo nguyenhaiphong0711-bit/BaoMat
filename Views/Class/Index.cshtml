@@ -14,6 +14,10 @@
     {
         <a class="btn" asp-action="Create">+ Tạo lớp học</a>
     }
+    else if (User.IsInRole(Roles.Student) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.CourseRegistrationView))
+    {
+        <a class="btn" asp-controller="CourseRegistration" asp-action="Index">+ Đăng ký môn / lớp</a>
+    }
 </div>
 
 <form method="get" class="filter-bar">
@@ -54,12 +58,25 @@ else
                 </div>
                 <p class="muted">Giảng viên: @teachers.GetValueOrDefault(x.TeacherId.ToString(), "Chưa phân công")</p>
                 <p class="muted">Khoa: @departments.FirstOrDefault(d => d.Id.ToString() == subjects.FirstOrDefault(s => s.Id == x.SubjectId)?.DepartmentId.ToString())?.Name</p>
+                @if (x.AcademicTermId.HasValue)
+                {
+                    <p class="muted">Sĩ số: @x.StudentIds.Count / @x.EnrollmentCapacity</p>
+                }
                 <p>@(string.IsNullOrWhiteSpace(x.Description) ? "Chưa có mô tả cho lớp học này." : x.Description)</p>
                 <div class="class-card-actions">
                     <a asp-action="Details" asp-route-id="@x.Id">Chi tiết lớp</a>
-                    <a asp-controller="Lesson" asp-action="Index" asp-route-classId="@x.Id">Bài học</a>
-                    <a asp-controller="Assignment" asp-action="Index" asp-route-classId="@x.Id">Bài tập</a>
-                    <a asp-controller="Schedule" asp-action="Index" asp-route-classId="@x.Id">Lịch học</a>
+                    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.LessonsView))
+                    {
+                        <a asp-controller="Lesson" asp-action="Index" asp-route-classId="@x.Id">Bài học</a>
+                    }
+                    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.AssignmentsView))
+                    {
+                        <a asp-controller="Assignment" asp-action="Index" asp-route-classId="@x.Id">Bài tập</a>
+                    }
+                    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleView))
+                    {
+                        <a asp-controller="Schedule" asp-action="Index" asp-route-classId="@x.Id">Lịch học</a>
+                    }
                     @if (User.IsInRole(Roles.Admin))
                     {
                         <a asp-action="Edit" asp-route-id="@x.Id">Chỉnh sửa</a>

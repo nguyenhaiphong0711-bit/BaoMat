@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using System.Security.Claims;
+using LMS.Security;
 
 namespace LMS.Controllers;
 
@@ -16,6 +17,7 @@ public sealed class ScheduleController(
     SubjectService subjects) : Controller
 {
     [HttpGet]
+    [RequirePermission(PermissionCodes.ScheduleView)]
     public async Task<IActionResult> Index(CatalogFilterViewModel filter, string? classId)
     {
         var user = await CurrentUserAsync();
@@ -50,11 +52,13 @@ public sealed class ScheduleController(
         ViewBag.Filter = filter;
         ViewBag.Classes = await classes.GetForUserAsync(user);
         ViewBag.Subjects = await subjects.GetAllAsync();
-        return View(sessions);
+        var page = PaginationViewModel.Apply(sessions, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
 
     [HttpGet]
-    [Authorize(Roles = Roles.Teacher)]
+    [Authorize(Roles = Roles.Teacher), RequirePermission(PermissionCodes.ScheduleAvailability)]
     public async Task<IActionResult> Availability()
     {
         var user = await CurrentUserAsync();
@@ -63,7 +67,7 @@ public sealed class ScheduleController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    [Authorize(Roles = Roles.Teacher)]
+    [Authorize(Roles = Roles.Teacher), RequirePermission(PermissionCodes.ScheduleAvailability)]
     public async Task<IActionResult> Availability(TeacherAvailabilityPageViewModel page)
     {
         var user = await CurrentUserAsync();
@@ -82,7 +86,7 @@ public sealed class ScheduleController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    [Authorize(Roles = Roles.Teacher)]
+    [Authorize(Roles = Roles.Teacher), RequirePermission(PermissionCodes.ScheduleAvailability)]
     public async Task<IActionResult> CancelAvailability(string id)
     {
         var user = await CurrentUserAsync();
@@ -96,13 +100,13 @@ public sealed class ScheduleController(
 
     [HttpGet]
     [Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> AvailabilityRequests()
+    public async Task<IActionResult> AvailabilityRequests(int page = 1, int pageSize = 20)
     {
         var requests = await schedules.GetAvailabilitiesAsync();
         var teacherIds = requests.Select(x => x.TeacherId).Distinct().ToArray();
         var teachers = await users.GetByIdsAsync(teacherIds);
         var names = teachers.ToDictionary(x => x.Id, x => x.FullName);
-        return View(requests.Select(request => new AvailabilityListItem
+        var rows = requests.Select(request => new AvailabilityListItem
         {
             Id = request.Id.ToString(),
             TeacherName = names.GetValueOrDefault(request.TeacherId, "Unknown teacher"),
@@ -110,7 +114,10 @@ public sealed class ScheduleController(
             EndAt = AsUtcOffset(request.EndAt),
             Note = request.Note,
             Status = request.Status
-        }).ToList());
+        }).ToList();
+        var visibleRows = PaginationViewModel.Apply(rows, page, pageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(visibleRows);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -167,6 +174,7 @@ public sealed class ScheduleController(
     }
 
     [HttpGet]
+    [RequirePermission(PermissionCodes.ScheduleView)]
     public async Task<IActionResult> Details(string id)
     {
         var user = await CurrentUserAsync();
@@ -176,7 +184,7 @@ public sealed class ScheduleController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    [Authorize(Roles = Roles.Student)]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.ScheduleEnroll)]
     public async Task<IActionResult> Enroll(string id)
     {
         var user = await CurrentUserAsync();
@@ -190,7 +198,7 @@ public sealed class ScheduleController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    [Authorize(Roles = Roles.Student)]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.ScheduleEnroll)]
     public async Task<IActionResult> Withdraw(string id)
     {
         var user = await CurrentUserAsync();
@@ -204,7 +212,7 @@ public sealed class ScheduleController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher)]
+    [Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.ScheduleManage)]
     public async Task<IActionResult> Cancel(string id, CancelSessionViewModel vm)
     {
         var user = await CurrentUserAsync();

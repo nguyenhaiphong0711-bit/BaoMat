@@ -3,7 +3,7 @@
     ViewData["Title"] = "Tạo tài khoản";
 }
 
-<div class="page-heading"><div><span class="eyebrow">ACCESS MANAGEMENT</span><h1>Tạo tài khoản</h1><p class="muted">Tạo người dùng và gán vai trò trong hệ thống.</p></div></div>
+<div class="page-heading"><div><span class="eyebrow">ACCESS MANAGEMENT</span><h1>Tạo tài khoản</h1><p class="muted">Chỉ quản trị viên được tạo tài khoản. Nhập email người dùng đang sử dụng để nhận OTP khi quên mật khẩu.</p></div></div>
 
 <form method="post" class="form form-card">
     <div asp-validation-summary="All" class="error"></div>
@@ -13,11 +13,14 @@
     <span asp-validation-for="FullName" class="error"></span>
 
     <label asp-for="Email">Email</label>
-    <input asp-for="Email" />
+    <input asp-for="Email" type="email" autocomplete="email" placeholder="ten@domain.com" />
     <span asp-validation-for="Email" class="error"></span>
 
     <label asp-for="Password">Mật khẩu</label>
-    <input asp-for="Password" autocomplete="new-password" />
+    <div class="password-field">
+        <input asp-for="Password" type="password" autocomplete="new-password" data-password-input />
+        <button class="password-visibility" type="button" data-password-toggle aria-label="Hiển thị mật khẩu" aria-pressed="false">Hiện</button>
+    </div>
     <span asp-validation-for="Password" class="error"></span>
 
     <label asp-for="Role">Vai trò</label>
@@ -29,3 +32,7 @@
 
     <div class="action-row"><button>Tạo tài khoản</button><a class="btn btn-ghost" asp-action="Index">Hủy</a></div>
 </form>
+
+@section Scripts {
+    <script src="~/js/password-visibility.js" asp-append-version="true"></script>
+}

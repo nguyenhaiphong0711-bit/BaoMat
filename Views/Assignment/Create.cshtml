@@ -3,6 +3,10 @@
     ViewData["Title"] = "Tạo bài tập";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/filepond/filepond.min.css" asp-append-version="true" />
+}
+
 <div class="page-heading"><div><span class="eyebrow">@ViewBag.ClassName</span><h1>Tạo bài tập</h1><p class="muted">Đặt yêu cầu, hạn nộp và trạng thái hiển thị.</p></div></div>
 <form method="post" asp-route-classId="@ViewBag.ClassId" class="form form-card">
     <div asp-validation-summary="All" class="error"></div>
@@ -14,6 +18,14 @@
     <textarea asp-for="Description" rows="6"></textarea>
     <span asp-validation-for="Description" class="error"></span>
 
+    <label for="assignment-files">Tài liệu đính kèm</label>
+    <input id="assignment-files" type="file" data-filepond
+           data-process-url="@Url.Action("AssignmentAttachment", "Upload", new { classId = ViewBag.ClassId })"
+           data-revert-url="@Url.Action("Revert", "Upload")" data-ids-target="UploadedFileIds" />
+    <input asp-for="UploadedFileIds" type="hidden" />
+    <span asp-validation-for="UploadedFileIds" class="error"></span>
+    <small class="muted">Tối đa 5 tệp, mỗi tệp tối đa 25 MB. PDF, Office, TXT, CSV, ZIP, PNG, JPG.</small>
+
     <label asp-for="DueDate">Hạn nộp</label>
     <input asp-for="DueDate" type="datetime-local" />
 
@@ -23,3 +35,8 @@
 
     <button type="submit">Tạo bài tập</button>
 </form>
+
+@section Scripts {
+    <script src="~/filepond/filepond.min.js" asp-append-version="true"></script>
+    <script src="~/js/filepond-lms.js" asp-append-version="true"></script>
+}

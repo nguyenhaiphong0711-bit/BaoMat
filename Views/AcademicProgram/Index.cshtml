@@ -1,0 +1,166 @@
+@model LMS.ViewModels.AcademicProgramViewModel
+@{
+    ViewData["Title"] = "Ngành học";
+    var departments = ViewBag.Departments as List<LMS.Models.Department> ?? new();
+    var subjects = ViewBag.Subjects as List<LMS.Models.Subject> ?? new();
+    var programs = ViewBag.Programs as List<LMS.Models.AcademicProgram> ?? new();
+    var courseCounts = ViewBag.ProgramCourseCounts as Dictionary<string, int> ?? new();
+    var isEditing = !string.IsNullOrEmpty(Model.Id);
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">ACADEMIC STRUCTURE</span><h1>Ngành học</h1><p class="muted">Quản lý ngành theo khoa và cấu hình các môn học trong từng ngành. Danh sách môn này được dùng để xác định lớp sinh viên đủ điều kiện đăng ký.</p></div>
+    <span class="catalog-summary">@programs.Count(x => x.IsActive) ngành đang hoạt động</span>
+</div>
+
+<div class="academic-program-layout">
+    <section class="card academic-program-editor">
+        <div class="section-heading">
+            <span class="eyebrow">@(isEditing ? "CHỈNH SỬA NGÀNH" : "TẠO NGÀNH MỚI")</span>
+            <h2>@(isEditing ? "Cập nhật ngành học" : "Thông tin ngành học")</h2>
+            <p class="muted">Chọn khoa trước, sau đó thêm các môn và sắp xếp theo học kỳ.</p>
+        </div>
+        <form method="post" asp-action="Save" class="form">
+            <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="All" class="error"></div>
+            <div class="form-grid">
+                <div>
+                    <label asp-for="DepartmentId">Khoa quản lý</label>
+                    <select asp-for="DepartmentId" id="major-department">
+                        <option value="">-- Chọn khoa --</option>
+                        @foreach (var department in departments)
+                        {
+                            <option value="@department.Id">@department.Code · @department.Name</option>
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="Code">Mã ngành</label>
+                    <input asp-for="Code" placeholder="Ví dụ: CNTT" />
+                </div>
+            </div>
+            <label asp-for="Name">Tên ngành</label>
+            <input asp-for="Name" placeholder="Ví dụ: Công nghệ thông tin" />
+            <label asp-for="Description">Mô tả ngành</label>
+            <textarea asp-for="Description" rows="3" placeholder="Mục tiêu đào tạo hoặc thông tin giới thiệu"></textarea>
+
+            <div class="academic-curriculum-heading">
+                <div><span class="eyebrow">DANH MỤC MÔN</span><h3>Môn học thuộc ngành</h3><p class="muted">Chỉ hiển thị môn học thuộc khoa đã chọn.</p></div>
+                <span class="curriculum-selected-count" id="curriculum-selected-count">0 môn đã chọn</span>
+            </div>
+            @if (subjects.Count == 0)
+            {
+                <div class="empty-state academic-subject-empty"><h3>Chưa có môn học</h3><p class="muted">Tạo môn học trong mục Môn học trước khi cấu hình ngành.</p><a class="btn btn-secondary small" asp-controller="Subject" asp-action="Create">+ Tạo môn học</a></div>
+            }
+            else
+            {
+                <div class="table-wrap academic-curriculum-table">
+                    <table>
+                        <thead><tr><th>Môn học</th><th>Trong ngành</th><th>Học kỳ</th><th>Tín chỉ</th><th>Bắt buộc</th></tr></thead>
+                        <tbody>
+                            @for (var i = 0; i < subjects.Count; i++)
+                            {
+                                var subject = subjects[i];
+                                var existing = Model.Curriculum.FirstOrDefault(x => x.SubjectId == subject.Id.ToString());
+                                <tr data-department="@subject.DepartmentId">
+                                    <td><strong>@subject.Code</strong><small>@subject.Name</small></td>
+                                    <td>
+                                        <input type="hidden" name="Curriculum[@i].SubjectId" value="@subject.Id" />
+                                        <label class="curriculum-check">
+                                            <input type="checkbox" class="curriculum-selected" name="Curriculum[@i].Selected" value="true" checked="@(existing?.Selected ?? false)" aria-label="Thêm @subject.Name vào ngành" />
+                                            <span>Thêm</span>
+                                        </label>
+                                    </td>
+                                    <td><input type="number" class="curriculum-number" name="Curriculum[@i].SemesterNumber" min="1" max="20" value="@(existing?.SemesterNumber ?? 1)" aria-label="Học kỳ của @subject.Name" /></td>
+                                    <td><input type="number" class="curriculum-number credits-number" name="Curriculum[@i].Credits" min="1" max="30" value="@(existing?.Credits ?? 3)" aria-label="Tín chỉ của @subject.Name" /></td>
+                                    <td><label class="curriculum-required"><input type="checkbox" name="Curriculum[@i].IsRequired" value="true" checked="@(existing?.IsRequired ?? true)" aria-label="@subject.Name là môn bắt buộc" /></label></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            <div class="action-row academic-form-actions">
+                <button type="submit">@(isEditing ? "Lưu ngành học" : "Tạo ngành học")</button>
+                @if (isEditing)
+                {
+                    <a class="btn btn-ghost" asp-action="Index">Hủy chỉnh sửa</a>
+                }
+            </div>
+        </form>
+    </section>
+    <section class="card academic-program-list">
+        <div class="section-heading"><span class="eyebrow">DANH SÁCH</span><h2>Ngành học đã tạo</h2><p class="muted">Chỉnh sửa đề cương, hoặc lưu trữ ngành không còn sử dụng.</p></div>
+        @if (programs.Count == 0)
+        {
+            <div class="empty-state"><h3>Chưa có ngành học</h3><p class="muted">Tạo ngành đầu tiên bằng biểu mẫu bên trái.</p></div>
+        }
+        else
+        {
+            <div class="program-list">
+                @foreach (var program in programs)
+                {
+                    var courseCount = courseCounts.GetValueOrDefault(program.Id.ToString());
+                    <article class="program-row">
+                        <div class="program-row-main">
+                            <span class="program-mark" aria-hidden="true">@((string.IsNullOrWhiteSpace(program.Name) ? "N" : program.Name[..1]).ToUpperInvariant())</span>
+                            <div class="program-row-info">
+                                <div class="program-row-title"><strong>@program.Name</strong><span class="badge @(program.IsActive ? "badge-open" : "badge-muted")">@(program.IsActive ? "Đang hoạt động" : "Đã lưu trữ")</span></div>
+                                <small>@program.Code · @departments.FirstOrDefault(x => x.Id == program.DepartmentId)?.Name</small>
+                                <small>@courseCount môn trong đề cương</small>
+                            </div>
+                        </div>
+                        <div class="program-row-actions">
+                            @if (program.IsActive)
+                            {
+                                <a class="btn btn-ghost small" asp-action="Edit" asp-route-id="@program.Id">Sửa ngành</a>
+                                <form method="post" asp-action="SetActive">
+                                    <input type="hidden" name="id" value="@program.Id" />
+                                    <input type="hidden" name="isActive" value="false" />
+                                    <button class="btn btn-danger-outline small" type="submit">Lưu trữ</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-action="SetActive">
+                                    <input type="hidden" name="id" value="@program.Id" />
+                                    <input type="hidden" name="isActive" value="true" />
+                                    <button class="btn btn-secondary small" type="submit">Mở lại</button>
+                                </form>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const department = document.getElementById("major-department");
+            const rows = [...document.querySelectorAll(".academic-curriculum-table tbody tr")];
+            const count = document.getElementById("curriculum-selected-count");
+            if (!department) return;
+
+            const updateCurriculum = () => {
+                for (const row of rows) {
+                    const belongsToDepartment = !department.value || row.dataset.department === department.value;
+                    row.hidden = !belongsToDepartment;
+                    if (!belongsToDepartment) {
+                        const checkbox = row.querySelector(".curriculum-selected");
+                        if (checkbox) checkbox.checked = false;
+                    }
+                }
+                const selected = document.querySelectorAll(".curriculum-selected:checked").length;
+                if (count) count.textContent = `${selected} môn đã chọn`;
+            };
+
+            department.addEventListener("change", updateCurriculum);
+            document.querySelectorAll(".curriculum-selected").forEach(input =>
+                input.addEventListener("change", updateCurriculum));
+            updateCurriculum();
+        })();
+    </script>
+}

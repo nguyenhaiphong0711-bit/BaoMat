@@ -1,0 +1,57 @@
+@model LMS.ViewModels.StudentAcademicDashboardViewModel
+@{
+    ViewData["Title"] = "Môn học và điểm số";
+    var totalGradedAssignments = Model.Courses.Sum(x => x.GradedAssignmentCount);
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">STUDENT ACADEMIC RECORD</span><h1>Môn học và điểm số</h1><p class="muted">Theo dõi ngành học, tín chỉ đã đăng ký và kết quả các bài tập đã được chấm.</p></div>
+    <a class="btn btn-secondary" asp-action="Tuition">Xem học phí</a>
+</div>
+
+<section class="student-academic-summary">
+    <article class="card student-summary-card"><span class="summary-icon">▧</span><div><small>Ngành học</small><strong>@Model.ProgramName</strong></div></article>
+    <article class="card student-summary-card"><span class="summary-icon">◈</span><div><small>Tín chỉ đã đăng ký</small><strong>@Model.TotalCredits</strong></div></article>
+    <article class="card student-summary-card"><span class="summary-icon">✓</span><div><small>Điểm bài tập trung bình</small><strong>@(Model.OverallAssignmentAverage.HasValue ? $"{Model.OverallAssignmentAverage.Value:0.##} / 10" : "Chưa có điểm")</strong></div></article>
+</section>
+
+<div class="section-heading student-section-heading">
+    <div><span class="eyebrow">COURSE PROGRESS</span><h2>Các môn đang theo học</h2></div>
+    <span class="badge">@Model.Courses.Count môn · @totalGradedAssignments bài đã chấm</span>
+</div>
+
+@if (Model.Courses.Count == 0)
+{
+    <div class="empty-state"><span class="empty-icon">◈</span><h2>Chưa có môn học được ghi danh</h2><p class="muted">Sau khi đăng ký lớp, thông tin môn học và điểm số sẽ xuất hiện tại đây.</p><a class="btn" asp-controller="CourseRegistration" asp-action="Index">Tìm lớp để đăng ký</a></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="student-course-table">
+            <thead><tr><th>Môn học</th><th>Lớp / học kỳ</th><th>Tín chỉ</th><th>Bài đã chấm</th><th>Điểm TB bài tập</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var course in Model.Courses)
+                {
+                    <tr>
+                        <td><strong>@course.SubjectName</strong><small>@course.SubjectCode</small></td>
+                        <td><strong>@course.ClassName</strong><small>@course.TermName @course.AcademicYear</small></td>
+                        <td><span class="credit-pill">@course.Credits TC</span></td>
+                        <td>@course.GradedAssignmentCount / @course.AssignmentCount</td>
+                        <td>
+                            @if (course.AverageAssignmentGrade.HasValue)
+                            {
+                                <span class="student-grade">@course.AverageAssignmentGrade.Value.ToString("0.##")<small>/10</small></span>
+                            }
+                            else
+                            {
+                                <span class="muted">Chưa có điểm</span>
+                            }
+                        </td>
+                        <td><a class="btn btn-ghost small" asp-controller="Assignment" asp-action="Index" asp-route-classId="@course.ClassId">Bài tập</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+<p class="student-grade-note">Điểm trung bình phía trên được tính từ các bài tập đã chấm; đây chưa phải điểm tổng kết môn học. Điểm thành phần và trọng số tổng kết cần được cấu hình riêng nếu trường áp dụng.</p>

@@ -1,10 +1,12 @@
 using LMS.Models; using LMS.Services; using LMS.ViewModels; using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
+using LMS.Security;
 namespace LMS.Controllers;
 [Authorize] public class ClassController : Controller
 {
-    private readonly ClassService _classes; private readonly UserService _users; private readonly SubjectService _subjects; private readonly DepartmentService _departments;
-    public ClassController(ClassService classes, UserService users, SubjectService subjects, DepartmentService departments){_classes=classes;_users=users;_subjects=subjects;_departments=departments;}
+    private readonly ClassService _classes; private readonly UserService _users; private readonly SubjectService _subjects; private readonly DepartmentService _departments; private readonly AcademicService _academic;
+    public ClassController(ClassService classes, UserService users, SubjectService subjects, DepartmentService departments, AcademicService academic){_classes=classes;_users=users;_subjects=subjects;_departments=departments;_academic=academic;}
+    [RequirePermission(PermissionCodes.ClassesView)]
     public async Task<IActionResult> Index(CatalogFilterViewModel filter)
     {
         var uid = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -41,17 +43,26 @@ namespace LMS.Controllers;
         ViewBag.Subjects = allSubjects;
         ViewBag.Departments = departments;
         ViewBag.Filter = filter;
-        return View(classroomList);
+        var page = PaginationViewModel.Apply(classroomList, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
-    [Authorize(Roles=Roles.Admin)] public async Task<IActionResult> Create(){await PopulateClassChoicesAsync();return View(new CreateClassViewModel());}
+    [Authorize(Roles=Roles.Admin)] public async Task<IActionResult> Create()
+    {
+        await PopulateClassChoicesAsync();
+        var activeTerm = await _academic.GetActiveTermAsync();
+        return View(new CreateClassViewModel { AcademicTermId = activeTerm?.Id.ToString() ?? "" });
+    }
     [HttpPost,Authorize(Roles=Roles.Admin),ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(CreateClassViewModel vm)
     {
         if (ModelState.IsValid &&
             (!await HasValidMembersAsync(vm.TeacherId, vm.StudentIds) ||
              await _subjects.GetAsync(vm.SubjectId) is null ||
+             await _academic.GetTermsAsync() is not { } terms ||
+             !terms.Any(term => term.Id.ToString() == vm.AcademicTermId) ||
              !await _classes.CanTeachSubjectAsync(vm.TeacherId, vm.SubjectId)))
-            ModelState.AddModelError("", "Chọn môn học hợp lệ và giảng viên đã được phân công dạy môn đó; kiểm tra lại danh sách học viên.");
+            ModelState.AddModelError("", "Chọn học kỳ, môn học hợp lệ và giảng viên đã được phân công dạy môn đó; kiểm tra lại danh sách học viên.");
 
         if (!ModelState.IsValid)
         {
@@ -73,6 +84,8 @@ namespace LMS.Controllers;
             Name = classroom.Name,
             Description = classroom.Description,
             SubjectId = classroom.SubjectId.ToString(),
+            AcademicTermId = classroom.AcademicTermId?.ToString() ?? "",
+            EnrollmentCapacity = classroom.EnrollmentCapacity,
             TeacherId = classroom.TeacherId.ToString(),
             StudentIds = classroom.StudentIds.Select(studentId => studentId.ToString()).ToList()
         });
@@ -122,6 +135,7 @@ namespace LMS.Controllers;
         ViewBag.Students = await _users.GetStudentsAsync();
         ViewBag.Subjects = await _subjects.GetAllAsync();
         ViewBag.Departments = await _departments.GetAllAsync();
+        ViewBag.Terms = await _academic.GetTermsAsync();
     }
 
     private async Task<bool> HasValidMembersAsync(string teacherId, IReadOnlyCollection<string>? studentIds)

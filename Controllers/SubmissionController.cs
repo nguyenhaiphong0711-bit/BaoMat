@@ -1,13 +1,90 @@
 using LMS.Models; using LMS.Services; using LMS.ViewModels; using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc; using MongoDB.Bson;
+using LMS.Security;
 namespace LMS.Controllers;
 [Authorize] public class SubmissionController : Controller
 {
-    private readonly SubmissionService _subs; private readonly AssignmentService _assignments; private readonly ClassService _classes; private readonly UserService _users;
-    public SubmissionController(SubmissionService s,AssignmentService a,ClassService c,UserService u){_subs=s;_assignments=a;_classes=c;_users=u;}
-    [Authorize(Roles=Roles.Student)] public async Task<IActionResult> Submit(string assignmentId){var a=await _assignments.GetAsync(assignmentId);var u=await _users.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value??"");if(a==null||u==null||!await _classes.HasAccessAsync(a.ClassId.ToString(),u)||!a.IsPublished||a.IsArchived)return Forbid();ViewBag.Assignment=a;ViewBag.Submission=await _subs.GetMineAsync(a.Id,u.Id);return View(new SubmissionViewModel{Content=ViewBag.Submission?.Content??""});}
-    [HttpPost,Authorize(Roles=Roles.Student),ValidateAntiForgeryToken] public async Task<IActionResult> Submit(string assignmentId,SubmissionViewModel vm){var a=await _assignments.GetAsync(assignmentId);var u=await _users.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value??"");if(a==null||u==null||!await _classes.HasAccessAsync(a.ClassId.ToString(),u)||!a.IsPublished||a.IsArchived)return Forbid();if(a.DueDate<=DateTime.UtcNow){TempData["Error"]="Hạn nộp bài đã qua.";return RedirectToAction("Index","Assignment",new{classId=a.ClassId});}if(!ModelState.IsValid){ViewBag.Assignment=a;return View(vm);}await _subs.SubmitAsync(a.Id,u.Id,vm);return RedirectToAction("Index","Assignment",new{classId=a.ClassId});}
-    [Authorize(Roles=Roles.Admin+","+Roles.Teacher)]
-    public async Task<IActionResult> Index(string assignmentId)
+    private readonly SubmissionService _subs; private readonly AssignmentService _assignments; private readonly ClassService _classes; private readonly UserService _users; private readonly FileStorageService _files;
+    public SubmissionController(SubmissionService s,AssignmentService a,ClassService c,UserService u,FileStorageService files){_subs=s;_assignments=a;_classes=c;_users=u;_files=files;}
+    [Authorize(Roles=Roles.Student), RequirePermission(PermissionCodes.SubmissionsSubmit)]
+    public async Task<IActionResult> Submit(string assignmentId)
+    {
+        var assignment = await _assignments.GetAsync(assignmentId);
+        var user = await GetCurrentUserAsync();
+        if (assignment is null || user is null ||
+            !await _classes.HasAccessAsync(assignment.ClassId.ToString(), user) ||
+            !assignment.IsPublished || assignment.IsArchived)
+            return Forbid();
+
+        var submission = await _subs.GetMineAsync(assignment.Id, user.Id);
+        ViewBag.Assignment = assignment;
+        ViewBag.Submission = submission;
+        return View(new SubmissionViewModel
+        {
+            Content = submission?.Content ?? "",
+            UploadedFileIds = string.Join(",", submission?.Attachments.Select(x => x.Id) ?? Enumerable.Empty<MongoDB.Bson.ObjectId>())
+        });
+    }
+
+    [HttpPost, Authorize(Roles=Roles.Student), RequirePermission(PermissionCodes.SubmissionsSubmit), ValidateAntiForgeryToken]
+    public async Task<IActionResult> Submit(string assignmentId, SubmissionViewModel vm)
+    {
+        var assignment = await _assignments.GetAsync(assignmentId);
+        var user = await GetCurrentUserAsync();
+        if (assignment is null || user is not { } student ||
+            !await _classes.HasAccessAsync(assignment.ClassId.ToString(), student) ||
+            !assignment.IsPublished || assignment.IsArchived)
+            return Forbid();
+
+        if (assignment.DueDate <= DateTime.UtcNow)
+        {
+            TempData["Error"] = "Hạn nộp bài đã qua.";
+            return RedirectToAction("Index", "Assignment", new { classId = assignment.ClassId });
+        }
+
+        var existing = await _subs.GetMineAsync(assignment.Id, student.Id);
+        var requestedIds = FileStorageService.ParseIds(vm.UploadedFileIds);
+        if (requestedIds is null || requestedIds.Count > FileStorageService.MaxFilesPerUpload)
+        {
+            ModelState.AddModelError(nameof(vm.UploadedFileIds), "Danh sách tệp không hợp lệ.");
+        }
+        else if (string.IsNullOrWhiteSpace(vm.Content) && requestedIds.Count == 0)
+        {
+            ModelState.AddModelError(nameof(vm.Content), "Nhập câu trả lời hoặc tải lên ít nhất một tệp.");
+        }
+
+        IReadOnlyList<StoredFileReference>? attachments = null;
+        if (requestedIds is not null)
+        {
+            var existingById = existing?.Attachments.ToDictionary(x => x.Id) ?? new Dictionary<MongoDB.Bson.ObjectId, StoredFileReference>();
+            var retained = requestedIds.Where(existingById.ContainsKey).Select(fileId => existingById[fileId]).ToList();
+            var newIds = requestedIds.Where(fileId => !existingById.ContainsKey(fileId)).ToArray();
+            var newAttachments = await _files.ValidateStagedFilesAsync(
+                string.Join(",", newIds), student.Id, assignment.ClassId, "submission", assignment.Id);
+            if (newAttachments is null)
+                ModelState.AddModelError(nameof(vm.UploadedFileIds), "Tệp tải lên không hợp lệ hoặc không được phép.");
+            else
+                attachments = retained.Concat(newAttachments).ToList();
+        }
+
+        if (!ModelState.IsValid || attachments is null)
+        {
+            ViewBag.Assignment = assignment;
+            ViewBag.Submission = existing;
+            return View(vm);
+        }
+
+        var previousIds = existing?.Attachments.Select(x => x.Id).ToHashSet() ?? new HashSet<MongoDB.Bson.ObjectId>();
+        var savedIds = attachments.Select(x => x.Id).ToHashSet();
+        await _subs.SubmitAsync(assignment.Id, student.Id, vm, attachments);
+        foreach (var removedId in previousIds.Except(savedIds))
+            await _files.DeleteIfUnreferencedAsync(removedId);
+        return RedirectToAction("Index", "Assignment", new { classId = assignment.ClassId });
+    }
+
+    private Task<User?> GetCurrentUserAsync() =>
+        _users.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "");
+    [Authorize(Roles=Roles.Admin+","+Roles.Teacher), RequirePermission(PermissionCodes.SubmissionsReview)]
+    public async Task<IActionResult> Index(string assignmentId, CatalogFilterViewModel filter)
     {
         var assignment = await _assignments.GetAsync(assignmentId);
         var user = await _users.GetAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "");
@@ -18,19 +95,23 @@ namespace LMS.Controllers;
         var studentsById = students.ToDictionary(x => x.Id);
         ViewBag.Assignment = assignment;
         ViewBag.ClassName = (await _classes.GetAsync(assignment.ClassId.ToString()))?.Name ?? "";
-        return View(submissions.Select(submission => new SubmissionListItemViewModel
+        var rows = submissions.Select(submission => new SubmissionListItemViewModel
         {
             Id = submission.Id.ToString(),
             StudentName = studentsById.GetValueOrDefault(submission.StudentId)?.FullName ?? "Unknown student",
             StudentEmail = studentsById.GetValueOrDefault(submission.StudentId)?.Email ?? "",
             Content = submission.Content,
+            Attachments = submission.Attachments,
             Grade = submission.Grade,
             TeacherComment = submission.TeacherComment,
             SubmittedAt = new DateTimeOffset(DateTime.SpecifyKind(submission.SubmittedAt, DateTimeKind.Utc))
-        }).ToList());
+        }).ToList();
+        var page = PaginationViewModel.Apply(rows, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
 
-    [Authorize(Roles=Roles.Admin+","+Roles.Teacher)]
+    [Authorize(Roles=Roles.Admin+","+Roles.Teacher), RequirePermission(PermissionCodes.SubmissionsReview)]
     public async Task<IActionResult> Grade(string id)
     {
         var submission = await _subs.GetAsync(id);
@@ -43,7 +124,7 @@ namespace LMS.Controllers;
         ViewBag.Assignment = assignment;
         return View(new GradeViewModel { Grade = submission.Grade ?? 0, TeacherComment = submission.TeacherComment });
     }
-    [HttpPost,Authorize(Roles=Roles.Admin+","+Roles.Teacher),ValidateAntiForgeryToken]
+    [HttpPost,Authorize(Roles=Roles.Admin+","+Roles.Teacher),RequirePermission(PermissionCodes.SubmissionsReview),ValidateAntiForgeryToken]
     public async Task<IActionResult> Grade(string id, GradeViewModel vm)
     {
         var submission = await _subs.GetAsync(id);

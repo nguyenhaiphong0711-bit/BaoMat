@@ -14,7 +14,20 @@
 
 <section class="card submission-preview">
     <span class="eyebrow">NỘI DUNG BÀI LÀM</span>
-    <p class="submission-content">@ViewBag.Submission.Content</p>
+    @if (!string.IsNullOrWhiteSpace((string)ViewBag.Submission.Content))
+    {
+        <p class="submission-content">@ViewBag.Submission.Content</p>
+    }
+    @if (ViewBag.Submission.Attachments is IEnumerable<LMS.Models.StoredFileReference> attachments && attachments.Any())
+    {
+        <div class="file-list">
+            <strong>Tệp học viên đã nộp</strong>
+            @foreach (var attachment in attachments)
+            {
+                <a asp-controller="File" asp-action="Download" asp-route-id="@attachment.Id">↧ @attachment.FileName</a>
+            }
+        </div>
+    }
     <small class="muted">Nộp lúc @ViewBag.Submission.SubmittedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
 </section>
 

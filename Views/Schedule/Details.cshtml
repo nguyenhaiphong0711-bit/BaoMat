@@ -28,17 +28,17 @@
         {
             <div class="notice notice-danger">Buổi học đã hủy: @session.CancellationReason. Lịch sử đăng ký được lưu lại.</div>
         }
-        @if (User.IsInRole(Roles.Student) && session.Status == ScheduleStatuses.Scheduled && !session.IsEnrolled)
+        @if (User.IsInRole(Roles.Student) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleEnroll) && session.Status == ScheduleStatuses.Scheduled && !session.IsEnrolled)
         {
             <form method="post" asp-action="Enroll" asp-route-id="@session.Id"><button type="submit">Đăng ký buổi học</button></form>
         }
-        @if (User.IsInRole(Roles.Student) && session.IsEnrolled && session.Status == ScheduleStatuses.Scheduled)
+        @if (User.IsInRole(Roles.Student) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleEnroll) && session.IsEnrolled && session.Status == ScheduleStatuses.Scheduled)
         {
             <form method="post" asp-action="Withdraw" asp-route-id="@session.Id"><button class="btn btn-danger-outline" type="submit">Hủy đăng ký</button></form>
         }
     </section>
 
-    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
+    @if (User.IsInRole(Roles.Admin) || (User.IsInRole(Roles.Teacher) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleView)))
     {
         <section class="card detail-card">
             <div class="title-row"><div><span class="eyebrow">ROSTER</span><h2>Danh sách đăng ký</h2></div><span class="badge badge-open">@session.EnrolledCount học viên</span></div>
@@ -63,7 +63,7 @@
     }
 </div>
 
-@if ((User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher)) && session.Status == ScheduleStatuses.Scheduled)
+@if ((User.IsInRole(Roles.Admin) || (User.IsInRole(Roles.Teacher) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleManage))) && session.Status == ScheduleStatuses.Scheduled)
 {
     <form method="post" asp-action="Cancel" asp-route-id="@session.Id" class="inline-cancel">
         <label for="Reason">Hủy buổi học (lịch sử vẫn được giữ)</label>

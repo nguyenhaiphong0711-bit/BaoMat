@@ -21,9 +21,18 @@
             <dt>Học viên</dt><dd>@(Model.StudentIds?.Count ?? 0)</dd>
         </dl>
         <div class="action-row">
-            <a class="btn btn-secondary" asp-controller="Lesson" asp-action="Index" asp-route-classId="@Model.Id">Bài học</a>
-            <a class="btn btn-secondary" asp-controller="Assignment" asp-action="Index" asp-route-classId="@Model.Id">Bài tập</a>
-            <a class="btn" asp-controller="Schedule" asp-action="Index" asp-route-classId="@Model.Id">Lịch lớp</a>
+            @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.LessonsView))
+            {
+                <a class="btn btn-secondary" asp-controller="Lesson" asp-action="Index" asp-route-classId="@Model.Id">Bài học</a>
+            }
+            @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.AssignmentsView))
+            {
+                <a class="btn btn-secondary" asp-controller="Assignment" asp-action="Index" asp-route-classId="@Model.Id">Bài tập</a>
+            }
+            @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleView))
+            {
+                <a class="btn" asp-controller="Schedule" asp-action="Index" asp-route-classId="@Model.Id">Lịch lớp</a>
+            }
         </div>
     </section>
     <section class="card detail-card">

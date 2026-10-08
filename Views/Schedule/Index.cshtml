@@ -12,7 +12,7 @@
         <h1>@(ViewBag.ClassId is not null ? "Lịch lớp học" : User.IsInRole(Roles.Student) ? "Lịch học của tôi" : User.IsInRole(Roles.Teacher) ? "Lịch giảng dạy" : "Lịch lớp học")</h1>
         <p class="muted">Buổi học, tình trạng đăng ký và thông tin lớp được tập trung tại đây.</p>
     </div>
-    @if (User.IsInRole(Roles.Teacher))
+    @if (User.IsInRole(Roles.Teacher) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleAvailability))
     {
         <a class="btn" asp-action="Availability">+ Khai báo giờ rảnh</a>
     }
@@ -97,13 +97,13 @@ else
                     }
                     <div class="action-row session-actions">
                         <a class="btn btn-ghost" asp-action="Details" asp-route-id="@session.Id">Chi tiết buổi học</a>
-                        @if (User.IsInRole(Roles.Student) && session.Status == ScheduleStatuses.Scheduled && !session.IsEnrolled)
+                        @if (User.IsInRole(Roles.Student) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleEnroll) && session.Status == ScheduleStatuses.Scheduled && !session.IsEnrolled)
                         {
                             <form method="post" asp-action="Enroll" asp-route-id="@session.Id">
                                 <button class="btn" type="submit">Đăng ký học</button>
                             </form>
                         }
-                        @if (User.IsInRole(Roles.Student) && session.IsEnrolled && session.Status == ScheduleStatuses.Scheduled)
+                        @if (User.IsInRole(Roles.Student) && User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.ScheduleEnroll) && session.IsEnrolled && session.Status == ScheduleStatuses.Scheduled)
                         {
                             <form method="post" asp-action="Withdraw" asp-route-id="@session.Id">
                                 <button class="btn btn-danger-outline" type="submit">Hủy đăng ký</button>

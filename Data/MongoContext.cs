@@ -1,6 +1,7 @@
 using LMS.Models;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using MongoDB.Driver.GridFS;
 
 namespace LMS.Data;
 
@@ -19,6 +20,7 @@ public class SecuritySettings
 public class MongoContext
 {
     private readonly IMongoDatabase _database;
+    public GridFSBucket FileBucket { get; }
     public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
     public IMongoCollection<ClassRoom> Classes => _database.GetCollection<ClassRoom>("Classes");
     public IMongoCollection<Subject> Subjects => _database.GetCollection<Subject>("Subjects");
@@ -30,11 +32,19 @@ public class MongoContext
     public IMongoCollection<TeacherAvailability> TeacherAvailabilities => _database.GetCollection<TeacherAvailability>("TeacherAvailabilities");
     public IMongoCollection<ClassSession> ClassSessions => _database.GetCollection<ClassSession>("ClassSessions");
     public IMongoCollection<SessionEnrollment> SessionEnrollments => _database.GetCollection<SessionEnrollment>("SessionEnrollments");
+    public IMongoCollection<Permission> Permissions => _database.GetCollection<Permission>("Permissions");
+    public IMongoCollection<AcademicProgram> AcademicPrograms => _database.GetCollection<AcademicProgram>("AcademicPrograms");
+    public IMongoCollection<AcademicTerm> AcademicTerms => _database.GetCollection<AcademicTerm>("AcademicTerms");
+    public IMongoCollection<ProgramCourse> ProgramCourses => _database.GetCollection<ProgramCourse>("ProgramCourses");
+    public IMongoCollection<StudentRegistration> StudentRegistrations => _database.GetCollection<StudentRegistration>("StudentRegistrations");
+    public IMongoCollection<PasswordResetToken> PasswordResetTokens => _database.GetCollection<PasswordResetToken>("PasswordResetTokens");
+    public IMongoCollection<TuitionInvoice> TuitionInvoices => _database.GetCollection<TuitionInvoice>("TuitionInvoices");
 
     public MongoContext(IOptions<MongoSettings> options)
     {
         var client = new MongoClient(options.Value.ConnectionString);
         _database = client.GetDatabase(options.Value.DatabaseName);
+        FileBucket = new GridFSBucket(_database, new GridFSBucketOptions { BucketName = "LmsUploads" });
         Departments.Indexes.CreateOne(new CreateIndexModel<Department>(
             Builders<Department>.IndexKeys.Ascending(x => x.Code),
             new CreateIndexOptions { Unique = true }));
@@ -46,5 +56,36 @@ public class MongoContext
                 .Ascending(x => x.SessionId)
                 .Ascending(x => x.StudentId),
             new CreateIndexOptions { Unique = true }));
+        Permissions.Indexes.CreateOne(new CreateIndexModel<Permission>(
+            Builders<Permission>.IndexKeys.Ascending(x => x.Code),
+            new CreateIndexOptions { Unique = true }));
+        AcademicPrograms.Indexes.CreateOne(new CreateIndexModel<AcademicProgram>(
+            Builders<AcademicProgram>.IndexKeys.Ascending(x => x.Code),
+            new CreateIndexOptions { Unique = true }));
+        AcademicTerms.Indexes.CreateOne(new CreateIndexModel<AcademicTerm>(
+            Builders<AcademicTerm>.IndexKeys.Ascending(x => x.Code),
+            new CreateIndexOptions { Unique = true }));
+        ProgramCourses.Indexes.CreateOne(new CreateIndexModel<ProgramCourse>(
+            Builders<ProgramCourse>.IndexKeys.Ascending(x => x.ProgramId).Ascending(x => x.SubjectId),
+            new CreateIndexOptions { Unique = true }));
+        StudentRegistrations.Indexes.CreateOne(new CreateIndexModel<StudentRegistration>(
+            Builders<StudentRegistration>.IndexKeys.Ascending(x => x.StudentId).Ascending(x => x.ClassId),
+            new CreateIndexOptions { Unique = true }));
+        PasswordResetTokens.Indexes.CreateOne(new CreateIndexModel<PasswordResetToken>(
+            Builders<PasswordResetToken>.IndexKeys.Ascending(x => x.UserId),
+            new CreateIndexOptions { Unique = true }));
+        PasswordResetTokens.Indexes.CreateOne(new CreateIndexModel<PasswordResetToken>(
+            Builders<PasswordResetToken>.IndexKeys.Ascending(x => x.ExpiresAt),
+            new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
+        TuitionInvoices.Indexes.CreateOne(new CreateIndexModel<TuitionInvoice>(
+            Builders<TuitionInvoice>.IndexKeys.Ascending(x => x.StudentId).Ascending(x => x.ClassId),
+            new CreateIndexOptions { Unique = true }));
+        TuitionInvoices.Indexes.CreateOne(new CreateIndexModel<TuitionInvoice>(
+            Builders<TuitionInvoice>.IndexKeys.Ascending(x => x.VnpayTransactionReference),
+            new CreateIndexOptions<TuitionInvoice>
+            {
+                Unique = true,
+                PartialFilterExpression = Builders<TuitionInvoice>.Filter.Gt(x => x.VnpayTransactionReference, "")
+            }));
     }
 }

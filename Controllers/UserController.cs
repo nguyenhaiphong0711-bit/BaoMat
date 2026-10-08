@@ -22,10 +22,26 @@ namespace LMS.Controllers;
         if (filter.CreatedTo.HasValue)
             users = users.Where(x => x.CreatedAt.Date <= filter.CreatedTo.Value.Date).ToList();
         ViewBag.Filter = filter;
-        return View(users);
+        var page = PaginationViewModel.Apply(users, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
     public IActionResult Create() => View(new CreateUserViewModel());
-    [HttpPost, ValidateAntiForgeryToken] public async Task<IActionResult> Create(CreateUserViewModel vm) { if(!ModelState.IsValid) return View(vm); if(!await _service.CreateAsync(vm)){ModelState.AddModelError("Email","Email đã tồn tại.");return View(vm);} return RedirectToAction(nameof(Index)); }
+    [HttpPost, ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(CreateUserViewModel vm)
+    {
+        if (!ModelState.IsValid)
+            return View(vm);
+
+        if (!await _service.CreateAsync(vm))
+        {
+            ModelState.AddModelError("Email", "Email đã tồn tại hoặc tài khoản không hợp lệ.");
+            return View(vm);
+        }
+
+        TempData["Success"] = "Đã tạo tài khoản. Người dùng có thể dùng email này để nhận mã OTP khi cần đặt lại mật khẩu.";
+        return RedirectToAction(nameof(Index));
+    }
     [HttpPost, ValidateAntiForgeryToken] public async Task<IActionResult> Toggle(string id)
     {
         if (id == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)

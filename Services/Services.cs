@@ -18,7 +18,7 @@ public class ActivityLogService
             Message = message, IpAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             UserAgent = context.Request.Headers.UserAgent.ToString()
         });
-    public Task<List<ActivityLog>> GetAllAsync() => _db.ActivityLogs.Find(_ => true).SortByDescending(x => x.CreatedAt).Limit(200).ToListAsync();
+    public Task<List<ActivityLog>> GetAllAsync() => _db.ActivityLogs.Find(_ => true).SortByDescending(x => x.CreatedAt).ToListAsync();
 }
 
 public class AuthService
@@ -66,7 +66,41 @@ public class UserService
             return false;
         var email = vm.Email.Trim().ToLowerInvariant();
         if (await _db.Users.Find(x => x.Email == email).AnyAsync()) return false;
-        await _db.Users.InsertOneAsync(new User { FullName = vm.FullName.Trim(), Email = email, PasswordHash = BCrypt.Net.BCrypt.HashPassword(vm.Password), Role = vm.Role });
+        var user = new User
+        {
+            FullName = vm.FullName.Trim(),
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(vm.Password),
+            Role = vm.Role,
+            PermissionCodes = PermissionCodes.DefaultsForRole(vm.Role).ToList(),
+            PermissionsInitialized = true,
+            StudentPortalPermissionsInitialized = vm.Role == Roles.Student,
+            AcademicProfileInitialized = vm.Role == Roles.Admin
+        };
+        if (vm.Role == Roles.Teacher)
+        {
+            var defaultDepartment = await _db.Departments.Find(x => x.Code == "GEN" && !x.IsArchived)
+                .FirstOrDefaultAsync();
+            if (defaultDepartment is not null)
+            {
+                user.DepartmentId = defaultDepartment.Id;
+                user.AcademicProfileInitialized = true;
+            }
+        }
+        else if (vm.Role == Roles.Student)
+        {
+            var defaultProgram = await _db.AcademicPrograms.Find(x => x.Code == "GEN-DEFAULT" && x.IsActive)
+                .FirstOrDefaultAsync();
+            if (defaultProgram is not null)
+            {
+                user.ProgramId = defaultProgram.Id;
+                user.DepartmentId = defaultProgram.DepartmentId;
+                user.CurrentSemester = 1;
+                user.AcademicProfileInitialized = true;
+            }
+        }
+
+        await _db.Users.InsertOneAsync(user);
         return true;
     }
     public async Task<User?> GetAsync(string id)
@@ -90,6 +124,13 @@ public class UserService
     public Task<List<User>> GetByIdsAsync(ObjectId[] ids) =>
         _db.Users.Find(Builders<User>.Filter.In(x => x.Id, ids)).ToListAsync();
 
+    public async Task<bool> HasPermissionAsync(ObjectId userId, string permissionCode)
+    {
+        var user = await _db.Users.Find(x => x.Id == userId && x.IsActive).FirstOrDefaultAsync();
+        return user is { Role: Roles.Admin } ||
+            user?.PermissionCodes.Contains(permissionCode, StringComparer.Ordinal) == true;
+    }
+
     public async Task<bool> AssignTeachingSubjectsAsync(string teacherId, IReadOnlyCollection<string> subjectIds)
     {
         if (!ObjectId.TryParse(teacherId, out var teacherObjectId) ||
@@ -108,7 +149,8 @@ public class UserService
             : await _db.Subjects.Find(Builders<Subject>.Filter.And(
                 Builders<Subject>.Filter.In(x => x.Id, parsedIds),
                 Builders<Subject>.Filter.Eq(x => x.IsArchived, false))).ToListAsync();
-        if (subjects.Count != parsedIds.Length)
+        if (subjects.Count != parsedIds.Length ||
+            subjects.Select(x => x.DepartmentId).Distinct().Count() > 1)
             return false;
         var assignedClasses = await _db.Classes.Find(x => x.TeacherId == teacherObjectId).ToListAsync();
         if (assignedClasses.Any(classroom => !parsedIds.Contains(classroom.SubjectId)))
@@ -116,8 +158,71 @@ public class UserService
 
         await _db.Users.UpdateOneAsync(
             x => x.Id == teacherObjectId,
-            Builders<User>.Update.Set(x => x.TeachingSubjectIds, parsedIds.ToList()));
+            Builders<User>.Update
+                .Set(x => x.TeachingSubjectIds, parsedIds.ToList())
+                .Set(x => x.DepartmentId, subjects.FirstOrDefault()?.DepartmentId ?? teacher.DepartmentId));
         return true;
+    }
+
+    public async Task<bool> UpdateAcademicProfileAsync(UserPermissionViewModel model)
+    {
+        if (!ObjectId.TryParse(model.UserId, out var userId))
+            return false;
+
+        var user = await _db.Users.Find(x => x.Id == userId && x.IsActive).FirstOrDefaultAsync();
+        if (user is null || user.Role == Roles.Admin)
+            return false;
+
+        if (user.Role == Roles.Teacher)
+        {
+            if (!ObjectId.TryParse(model.DepartmentId, out var departmentId) ||
+                !await _db.Departments.Find(x => x.Id == departmentId && !x.IsArchived).AnyAsync() ||
+                model.TeachingSubjectIds.Any(id => !ObjectId.TryParse(id, out _)))
+                return false;
+
+            var subjectIds = model.TeachingSubjectIds.Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(ObjectId.Parse).ToArray();
+            var subjects = subjectIds.Length == 0
+                ? new List<Subject>()
+                : await _db.Subjects.Find(x =>
+                    !x.IsArchived &&
+                    x.DepartmentId == departmentId &&
+                    subjectIds.Contains(x.Id)).ToListAsync();
+            if (subjects.Count != subjectIds.Length)
+                return false;
+
+            var assignedClasses = await _db.Classes.Find(x => x.TeacherId == userId && !x.IsArchived).ToListAsync();
+            if (assignedClasses.Any(classroom => !subjectIds.Contains(classroom.SubjectId)))
+                return false;
+
+            await _db.Users.UpdateOneAsync(x => x.Id == userId,
+                Builders<User>.Update
+                    .Set(x => x.DepartmentId, departmentId)
+                    .Set(x => x.TeachingSubjectIds, subjectIds.ToList())
+                    .Set(x => x.ProgramId, (ObjectId?)null)
+                    .Set(x => x.AcademicProfileInitialized, true));
+            return true;
+        }
+
+        if (user.Role == Roles.Student)
+        {
+            if (!ObjectId.TryParse(model.ProgramId, out var programId) ||
+                model.CurrentSemester is < 1 or > 20 ||
+                await _db.AcademicPrograms.Find(x => x.Id == programId && x.IsActive)
+                    .FirstOrDefaultAsync() is not { } program)
+                return false;
+
+            await _db.Users.UpdateOneAsync(x => x.Id == userId,
+                Builders<User>.Update
+                    .Set(x => x.ProgramId, programId)
+                    .Set(x => x.DepartmentId, program.DepartmentId)
+                    .Set(x => x.CurrentSemester, model.CurrentSemester)
+                    .Set(x => x.TeachingSubjectIds, new List<ObjectId>())
+                    .Set(x => x.AcademicProfileInitialized, true));
+            return true;
+        }
+
+        return false;
     }
 }
 
@@ -321,19 +426,40 @@ public class ClassService
     {
         ObjectId.TryParse(vm.TeacherId, out var teacherId);
         ObjectId.TryParse(vm.SubjectId, out var subjectId);
+        ObjectId.TryParse(vm.AcademicTermId, out var academicTermId);
         var studentIds = vm.StudentIds
             .Where(id => ObjectId.TryParse(id, out _))
             .Select(ObjectId.Parse)
             .ToList();
+        var termExists = academicTermId != ObjectId.Empty &&
+            await _db.AcademicTerms.Find(x => x.Id == academicTermId).AnyAsync();
+        if (!termExists || vm.EnrollmentCapacity < studentIds.Count)
+            throw new InvalidOperationException("Lớp phải thuộc học kỳ hợp lệ và sĩ số không được vượt quá sức chứa.");
+
         var classroom = new ClassRoom
         {
             Name = vm.Name.Trim(),
             Description = vm.Description.Trim(),
             SubjectId = subjectId,
+            AcademicTermId = academicTermId == ObjectId.Empty ? null : academicTermId,
+            EnrollmentCapacity = Math.Clamp(vm.EnrollmentCapacity, 1, 500),
             TeacherId = teacherId,
             StudentIds = studentIds
         };
         await _db.Classes.InsertOneAsync(classroom);
+        foreach (var studentId in studentIds)
+        {
+            await _db.StudentRegistrations.UpdateOneAsync(
+                x => x.StudentId == studentId && x.ClassId == classroom.Id,
+                Builders<StudentRegistration>.Update
+                    .Set(x => x.AcademicTermId, academicTermId)
+                    .Set(x => x.Status, "Active")
+                    .Set(x => x.RegisteredAt, DateTime.UtcNow)
+                    .Set(x => x.WithdrawnAt, (DateTime?)null)
+                    .SetOnInsert(x => x.StudentId, studentId)
+                    .SetOnInsert(x => x.ClassId, classroom.Id),
+                new UpdateOptions { IsUpsert = true });
+        }
         return classroom;
     }
 
@@ -369,6 +495,8 @@ public class ClassService
         if (!ObjectId.TryParse(id, out var classObjectId) ||
             !ObjectId.TryParse(vm.SubjectId, out var subjectId) ||
             !ObjectId.TryParse(vm.TeacherId, out var teacherObjectId) ||
+            !ObjectId.TryParse(vm.AcademicTermId, out var academicTermId) ||
+            vm.EnrollmentCapacity is < 1 or > 500 ||
             vm.StudentIds is null ||
             vm.StudentIds.Any(studentId => !ObjectId.TryParse(studentId, out _)))
             return false;
@@ -395,6 +523,9 @@ public class ClassService
         var classroom = await GetAsync(id);
         if (classroom is null)
             return false;
+        if (!await _db.AcademicTerms.Find(x => x.Id == academicTermId).AnyAsync() ||
+            vm.EnrollmentCapacity < studentIds.Count)
+            return false;
         if ((classroom.TeacherId != teacherObjectId || classroom.SubjectId != subjectId) &&
             await _db.ClassSessions.Find(x =>
                 x.ClassId == classObjectId &&
@@ -402,12 +533,40 @@ public class ClassService
                 x.EndAt > DateTime.UtcNow).AnyAsync())
             return false;
 
+        var previousStudentIds = classroom.StudentIds.ToHashSet();
         classroom.Name = vm.Name.Trim();
         classroom.Description = vm.Description.Trim();
         classroom.SubjectId = subjectId;
+        classroom.AcademicTermId = academicTermId;
+        classroom.EnrollmentCapacity = vm.EnrollmentCapacity;
         classroom.TeacherId = teacherObjectId;
         classroom.StudentIds = studentIds;
         await _db.Classes.ReplaceOneAsync(x => x.Id == classObjectId, classroom);
+        await _db.StudentRegistrations.UpdateManyAsync(
+            x => x.ClassId == classObjectId && x.Status == "Active",
+            Builders<StudentRegistration>.Update.Set(x => x.AcademicTermId, academicTermId));
+        var withdrawnIds = previousStudentIds.Except(studentIds).ToArray();
+        if (withdrawnIds.Length > 0)
+        {
+            await _db.StudentRegistrations.UpdateManyAsync(x =>
+                    x.ClassId == classObjectId && withdrawnIds.Contains(x.StudentId) && x.Status == "Active",
+                Builders<StudentRegistration>.Update
+                    .Set(x => x.Status, "Withdrawn")
+                    .Set(x => x.WithdrawnAt, DateTime.UtcNow));
+        }
+        foreach (var studentId in studentIds.Except(previousStudentIds))
+        {
+            await _db.StudentRegistrations.UpdateOneAsync(
+                x => x.StudentId == studentId && x.ClassId == classObjectId,
+                Builders<StudentRegistration>.Update
+                    .Set(x => x.AcademicTermId, academicTermId)
+                    .Set(x => x.Status, "Active")
+                    .Set(x => x.RegisteredAt, DateTime.UtcNow)
+                    .Set(x => x.WithdrawnAt, (DateTime?)null)
+                    .SetOnInsert(x => x.StudentId, studentId)
+                    .SetOnInsert(x => x.ClassId, classObjectId),
+                new UpdateOptions { IsUpsert = true });
+        }
         return true;
     }
 
@@ -503,7 +662,10 @@ public class AssignmentService
         return await _db.Assignments.Find(x => x.Id == oid).FirstOrDefaultAsync();
     }
 
-    public async Task<Assignment> CreateAsync(ObjectId classId, AssignmentViewModel vm)
+    public async Task<Assignment> CreateAsync(
+        ObjectId classId,
+        AssignmentViewModel vm,
+        IReadOnlyList<StoredFileReference>? attachments = null)
     {
         var assignment = new Assignment
         {
@@ -511,13 +673,14 @@ public class AssignmentService
             Title = vm.Title,
             Description = vm.Description,
             DueDate = vm.DueDate.ToUniversalTime(),
-            IsPublished = vm.IsPublished
+            IsPublished = vm.IsPublished,
+            Attachments = attachments?.ToList() ?? new List<StoredFileReference>()
         };
         await _db.Assignments.InsertOneAsync(assignment);
         return assignment;
     }
 
-    public async Task UpdateAsync(string id, AssignmentViewModel vm)
+    public async Task UpdateAsync(string id, AssignmentViewModel vm, IReadOnlyList<StoredFileReference>? attachments = null)
     {
         var assignment = await GetAsync(id);
         if (assignment is null) return;
@@ -525,8 +688,13 @@ public class AssignmentService
         assignment.Description = vm.Description;
         assignment.DueDate = vm.DueDate.ToUniversalTime();
         assignment.IsPublished = vm.IsPublished;
+        if (attachments is not null)
+            assignment.Attachments = attachments.ToList();
         await _db.Assignments.ReplaceOneAsync(x => x.Id == assignment.Id, assignment);
     }
+
+    public async Task<Assignment?> GetByAttachmentAsync(ObjectId fileId) =>
+        await _db.Assignments.Find(x => x.Attachments.Any(file => file.Id == fileId)).FirstOrDefaultAsync();
 
     public async Task<bool> ArchiveAsync(string id)
     {
@@ -550,12 +718,18 @@ public class SubmissionService
         return await _db.Submissions.Find(x => x.Id == oid).FirstOrDefaultAsync();
     }
 
-    public async Task<Submission> SubmitAsync(ObjectId assignmentId, ObjectId studentId, SubmissionViewModel vm)
+    public async Task<Submission> SubmitAsync(
+        ObjectId assignmentId,
+        ObjectId studentId,
+        SubmissionViewModel vm,
+        IReadOnlyList<StoredFileReference>? attachments = null)
     {
         var old = await _db.Submissions.Find(x => x.AssignmentId == assignmentId && x.StudentId == studentId).FirstOrDefaultAsync();
         if (old is not null)
         {
             old.Content = vm.Content;
+            if (attachments is not null)
+                old.Attachments = attachments.ToList();
             old.SubmittedAt = DateTime.UtcNow;
             old.Grade = null;
             old.TeacherComment = "";
@@ -564,7 +738,13 @@ public class SubmissionService
             return old;
         }
 
-        var submission = new Submission { AssignmentId = assignmentId, StudentId = studentId, Content = vm.Content };
+        var submission = new Submission
+        {
+            AssignmentId = assignmentId,
+            StudentId = studentId,
+            Content = vm.Content,
+            Attachments = attachments?.ToList() ?? new List<StoredFileReference>()
+        };
         await _db.Submissions.InsertOneAsync(submission);
         return submission;
     }
@@ -582,4 +762,18 @@ public class SubmissionService
     {
         return await _db.Submissions.Find(x => x.AssignmentId == assignmentId && x.StudentId == studentId).FirstOrDefaultAsync();
     }
+
+    public async Task<List<Submission>> GetMineForClassAsync(ObjectId classId, ObjectId studentId)
+    {
+        var assignmentIds = await _db.Assignments.Find(x => x.ClassId == classId && !x.IsArchived)
+            .Project(x => x.Id).ToListAsync();
+        if (assignmentIds.Count == 0)
+            return new List<Submission>();
+
+        return await _db.Submissions.Find(x =>
+            x.StudentId == studentId && assignmentIds.Contains(x.AssignmentId)).ToListAsync();
+    }
+
+    public async Task<Submission?> GetByAttachmentAsync(ObjectId fileId) =>
+        await _db.Submissions.Find(x => x.Attachments.Any(file => file.Id == fileId)).FirstOrDefaultAsync();
 }

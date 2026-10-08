@@ -5,7 +5,7 @@
 
 <div class="title-row">
     <div><span class="eyebrow">@ViewBag.ClassName</span><h1>Bài tập</h1><p class="muted">Theo dõi yêu cầu, hạn nộp và phản hồi của giảng viên.</p></div>
-    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
+    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.AssignmentsManage))
     {
         <a class="btn" asp-action="Create" asp-route-classId="@ViewBag.ClassId">+ Tạo bài tập</a>
     }
@@ -13,11 +13,19 @@
 
 @{
     var filter = ViewBag.Filter as LMS.ViewModels.CatalogFilterViewModel ?? new();
+    var ownSubmissions = ViewBag.SubmissionsByAssignment as Dictionary<string, LMS.Models.Submission>
+        ?? new Dictionary<string, LMS.Models.Submission>();
+    var canManageAssignments = User.IsInRole(Roles.Admin) ||
+        User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.AssignmentsManage);
+    var canReviewSubmissions = User.IsInRole(Roles.Admin) ||
+        User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.SubmissionsReview);
+    var canSubmitAssignments = User.IsInRole(Roles.Student) &&
+        User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.SubmissionsSubmit);
 }
 <form method="get" class="filter-bar">
     <input type="hidden" name="classId" value="@ViewBag.ClassId" />
     <input name="Query" value="@filter.Query" placeholder="Tìm tiêu đề hoặc yêu cầu..." />
-    @if (!User.IsInRole(Roles.Student))
+    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.AssignmentsManage))
     {
         <select name="Status">
             <option value="">Mọi trạng thái</option>
@@ -45,21 +53,43 @@ else
                 <div class="title-row"><h3>@x.Title</h3><span class="badge @(x.DueDate > DateTime.UtcNow ? "badge-open" : "badge-muted")">@(x.DueDate > DateTime.UtcNow ? "Đang mở" : "Đã hết hạn")</span></div>
                 <p>@x.Description</p>
                 <small class="muted">Hạn nộp: @x.DueDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small>
-                @if (User.IsInRole(Roles.Student))
+                @if (x.Attachments.Count > 0)
                 {
+                    <div class="file-list">
+                        <strong>Tài liệu bài tập</strong>
+                        @foreach (var attachment in x.Attachments)
+                        {
+                            <a asp-controller="File" asp-action="Download" asp-route-id="@attachment.Id">↧ @attachment.FileName</a>
+                        }
+                    </div>
+                }
+                @if (canSubmitAssignments)
+                {
+                    var mySubmission = ownSubmissions.GetValueOrDefault(x.Id.ToString());
+                    <div class="submission-status">
+                        <span class="badge @(mySubmission is null ? "badge-pending" : mySubmission.Grade.HasValue ? "badge-open" : "badge-enrolled")">
+                            @(mySubmission is null ? "Chưa nộp" : mySubmission.Grade.HasValue ? $"Đã chấm: {mySubmission.Grade:0.##}/10" : "Đã nộp · Chờ chấm")
+                        </span>
+                    </div>
                     @if (x.DueDate > DateTime.UtcNow)
                     {
-                        <a class="btn" asp-controller="Submission" asp-action="Submit" asp-route-assignmentId="@x.Id">Mở bài nộp</a>
+                        <a class="btn" asp-controller="Submission" asp-action="Submit" asp-route-assignmentId="@x.Id">@(mySubmission is null ? "Nộp bài tập" : "Xem / cập nhật bài nộp")</a>
                     }
                 }
-                else
+                else if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
                 {
                     <div class="action-row">
-                        <a class="btn btn-secondary small" asp-controller="Submission" asp-action="Index" asp-route-assignmentId="@x.Id">Bài nộp</a>
-                        <a class="btn btn-ghost small" asp-action="Edit" asp-route-id="@x.Id">Chỉnh sửa</a>
-                        <form method="post" asp-action="Archive" asp-route-id="@x.Id">
-                            <button class="btn btn-danger-outline small" type="submit">Lưu trữ</button>
-                        </form>
+                        @if (canReviewSubmissions)
+                        {
+                            <a class="btn btn-secondary small" asp-controller="Submission" asp-action="Index" asp-route-assignmentId="@x.Id">Bài nộp</a>
+                        }
+                        @if (canManageAssignments)
+                        {
+                            <a class="btn btn-ghost small" asp-action="Edit" asp-route-id="@x.Id">Chỉnh sửa</a>
+                            <form method="post" asp-action="Archive" asp-route-id="@x.Id">
+                                <button class="btn btn-danger-outline small" type="submit">Lưu trữ</button>
+                            </form>
+                        }
                     </div>
                 }
             </article>

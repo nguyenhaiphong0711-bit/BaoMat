@@ -15,14 +15,17 @@ public sealed class SubjectController(SubjectService subjects, DepartmentService
         var departmentsList = await departments.GetAllAsync();
         var filtered = await subjects.SearchAsync(filter);
         var allClasses = await classes.GetAllAsync();
+        var page = PaginationViewModel.Apply(filtered, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
         return View(new SubjectCatalogViewModel
         {
             Filter = filter,
-            Subjects = filtered,
+            Subjects = page,
             Departments = departmentsList,
             DepartmentNames = departmentsList.ToDictionary(x => x.Id.ToString(), x => x.Name),
             ClassCounts = allClasses.GroupBy(x => x.SubjectId.ToString())
-                .ToDictionary(x => x.Key, x => x.Count())
+                .ToDictionary(x => x.Key, x => x.Count()),
+            Pagination = pagination
         });
     }
 

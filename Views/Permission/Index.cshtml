@@ -1,0 +1,228 @@
+@model LMS.ViewModels.PermissionManagementViewModel
+@{
+    ViewData["Title"] = "Phân quyền";
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">ACCESS CONTROL</span>
+        <h1>Phân quyền tài khoản</h1>
+        <p class="muted">Quyền được gán riêng từng giáo viên/học viên. Máy chủ áp dụng quyền cho cả URL và API; ẩn nút trên giao diện không thay thế kiểm tra truy cập.</p>
+    </div>
+    <a class="btn btn-ghost" asp-controller="User" asp-action="Index">Quản lý người dùng</a>
+</div>
+
+<div class="permission-layout">
+    <aside class="permission-sidebar">
+        <section class="card permission-users">
+            <div class="section-heading">
+                <span class="eyebrow">CHỌN TÀI KHOẢN</span>
+                <h2>Danh sách người dùng</h2>
+                <p class="muted">Chọn một tài khoản để quản lý hồ sơ và quyền truy cập.</p>
+            </div>
+
+            @{
+                var teacherAccounts = Model.Users.Where(account => account.Role == LMS.Models.Roles.Teacher).ToList();
+                var studentAccounts = Model.Users.Where(account => account.Role == LMS.Models.Roles.Student).ToList();
+            }
+            <div class="permission-account-groups">
+                <section class="permission-account-group">
+                    <div class="permission-group-heading">
+                        <span class="permission-role-icon teacher-role" aria-hidden="true">GV</span>
+                        <div><h3>Giáo viên</h3><small>@teacherAccounts.Count tài khoản</small></div>
+                    </div>
+                    @if (teacherAccounts.Count == 0)
+                    {
+                        <p class="permission-empty">Chưa có tài khoản giáo viên.</p>
+                    }
+                    else
+                    {
+                        <nav class="permission-user-list" aria-label="Danh sách giáo viên">
+                            @foreach (var account in teacherAccounts)
+                            {
+                                <a class="permission-user @(account.Id == Model.SelectedUser.Id ? "active" : "")"
+                                   asp-action="Index" asp-route-userId="@account.Id"
+                                   aria-current="@(account.Id == Model.SelectedUser.Id ? "page" : null)">
+                                    <span class="avatar">@((string.IsNullOrWhiteSpace(account.FullName) ? "?" : account.FullName[..1]).ToUpperInvariant())</span>
+                                    <span class="permission-user-info"><strong>@account.FullName</strong><small>@account.Email</small></span>
+                                    <span class="permission-user-arrow" aria-hidden="true">›</span>
+                                </a>
+                            }
+                        </nav>
+                    }
+                </section>
+
+                <section class="permission-account-group">
+                    <div class="permission-group-heading">
+                        <span class="permission-role-icon student-role" aria-hidden="true">HV</span>
+                        <div><h3>Học sinh / sinh viên</h3><small>@studentAccounts.Count tài khoản</small></div>
+                    </div>
+                    @if (studentAccounts.Count == 0)
+                    {
+                        <p class="permission-empty">Chưa có tài khoản học sinh / sinh viên.</p>
+                    }
+                    else
+                    {
+                        <nav class="permission-user-list" aria-label="Danh sách học sinh và sinh viên">
+                            @foreach (var account in studentAccounts)
+                            {
+                                <a class="permission-user @(account.Id == Model.SelectedUser.Id ? "active" : "")"
+                                   asp-action="Index" asp-route-userId="@account.Id"
+                                   aria-current="@(account.Id == Model.SelectedUser.Id ? "page" : null)">
+                                    <span class="avatar">@((string.IsNullOrWhiteSpace(account.FullName) ? "?" : account.FullName[..1]).ToUpperInvariant())</span>
+                                    <span class="permission-user-info"><strong>@account.FullName</strong><small>@account.Email</small></span>
+                                    <span class="permission-user-arrow" aria-hidden="true">›</span>
+                                </a>
+                            }
+                        </nav>
+                    }
+                </section>
+            </div>
+        </section>
+    </aside>
+
+    <div class="permission-main">
+    @if (Model.SelectedUser.Id != MongoDB.Bson.ObjectId.Empty)
+    {
+        <section class="card permission-editor">
+            <div class="section-heading"><span class="eyebrow">TÀI KHOẢN ĐƯỢC CHỌN</span><h2>@Model.SelectedUser.FullName</h2><p class="muted">@Model.SelectedUser.Role · @Model.SelectedUser.Email</p></div>
+            <form method="post" asp-action="Assign" class="form" id="permission-form">
+                <input type="hidden" asp-for="Assignment.UserId" />
+                @if (Model.SelectedUser.Role == LMS.Models.Roles.Teacher)
+                {
+                    <div class="form-grid">
+                        <div>
+                            <label asp-for="Assignment.DepartmentId">Khoa công tác</label>
+                            <select asp-for="Assignment.DepartmentId">
+                                <option value="">-- Chọn khoa --</option>
+                                @foreach (var department in Model.Departments)
+                                {
+                                    <option value="@department.Id">@department.Code · @department.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label>Môn được phân công giảng dạy</label>
+                            <select asp-for="Assignment.TeachingSubjectIds" id="teacher-subjects" multiple>
+                                @foreach (var subject in Model.Subjects)
+                                {
+                                    <option value="@subject.Id" data-department="@subject.DepartmentId">@subject.Code · @subject.Name</option>
+                                }
+                            </select>
+                            <small class="muted">Các lớp đang phụ trách vẫn phải khớp với danh sách môn này.</small>
+                        </div>
+
+                        <script>
+                            const teacherDepartment = document.getElementById("Assignment_DepartmentId");
+                            const teacherSubjects = document.getElementById("teacher-subjects");
+                            if (teacherDepartment && teacherSubjects) {
+                                const filterTeacherSubjects = () => {
+                                    for (const option of teacherSubjects.options) {
+                                        option.hidden = !!teacherDepartment.value && option.dataset.department !== teacherDepartment.value;
+                                        if (option.hidden && option.selected) option.selected = false;
+                                    }
+                                };
+                                teacherDepartment.addEventListener("change", filterTeacherSubjects);
+                                filterTeacherSubjects();
+                            }
+                        </script>
+                    </div>
+                }
+                else
+                {
+                    <div class="form-grid">
+                        <div>
+                            <label asp-for="Assignment.ProgramId">Ngành học</label>
+                            <select asp-for="Assignment.ProgramId">
+                                <option value="">-- Chọn chương trình --</option>
+                                @foreach (var program in Model.Programs)
+                                {
+                                    <option value="@program.Id">@program.Code · @program.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label asp-for="Assignment.CurrentSemester">Học kỳ hiện tại của sinh viên</label>
+                            <input asp-for="Assignment.CurrentSemester" type="number" min="1" max="20" />
+                        </div>
+                    </div>
+                }
+
+                <div class="section-heading"><span class="eyebrow">QUYỀN CỦA TÀI KHOẢN</span><h2>Chọn chức năng được phép sử dụng</h2></div>
+                @foreach (var group in Model.Permissions.GroupBy(x => x.Category))
+                {
+                    <fieldset class="permission-group">
+                        <legend>@group.Key</legend>
+                        @foreach (var permission in group)
+                        {
+                            <label class="permission-option">
+                                <input type="checkbox" name="Assignment.PermissionCodes" value="@permission.Code"
+                                       checked="@Model.Assignment.PermissionCodes.Contains(permission.Code)" />
+                                <span><strong>@permission.Name</strong><small>@permission.Description</small><code>@permission.Code</code></span>
+                            </label>
+                        }
+                    </fieldset>
+                }
+                <div class="action-row"><button type="submit">Lưu quyền và hồ sơ</button></div>
+            </form>
+        </section>
+    }
+    else
+    {
+        <section class="card permission-editor permission-placeholder">
+            <span class="permission-placeholder-icon" aria-hidden="true">⚿</span>
+            <h2>Chọn tài khoản cần phân quyền</h2>
+            <p class="muted">Chọn giáo viên hoặc học sinh / sinh viên ở danh sách bên trái để xem hồ sơ và chỉnh sửa quyền truy cập.</p>
+            @if (Model.Users.Count == 0)
+            {
+                <a class="btn btn-secondary" asp-controller="User" asp-action="Index">Tạo tài khoản người dùng</a>
+            }
+        </section>
+    }
+    </div>
+</div>
+
+<div class="section-heading"><span class="eyebrow">MỞ RỘNG</span><h2>Danh mục quyền</h2><p class="muted">Quyền hệ thống gắn với các chức năng hiện có. Quyền tùy chỉnh có thể gán cho tài khoản và gắn trực tiếp với một cặp Controller/Action để server tự chặn route đó.</p></div>
+<div class="permission-catalog-grid">
+    <form method="post" asp-action="Create" class="card form permission-create">
+        <h3>Thêm quyền tùy chỉnh</h3>
+        <label for="Code">Mã quyền</label>
+        <input id="Code" name="Code" placeholder="reports.export" required pattern="[a-z][a-z0-9]*(\.[a-z][a-z0-9]*){1,4}" />
+        <small class="muted">Chỉ chữ thường, số và dấu chấm.</small>
+        <label for="Name">Tên hiển thị</label>
+        <input id="Name" name="Name" maxlength="100" required />
+        <label for="Category">Nhóm chức năng</label>
+        <input id="Category" name="Category" maxlength="60" required />
+        <label for="Description">Mô tả</label>
+        <textarea id="Description" name="Description" maxlength="500" rows="3"></textarea>
+        <div class="form-grid">
+            <div><label for="ControllerName">Controller (tuỳ chọn)</label><input id="ControllerName" name="ControllerName" placeholder="Report" /></div>
+            <div><label for="ActionName">Action (tuỳ chọn)</label><input id="ActionName" name="ActionName" placeholder="Export" /></div>
+        </div>
+        <small class="muted">Nhập cả Controller và Action để quyền này được tự động kiểm tra trên route tương ứng. Mỗi route chỉ gắn một quyền tùy chỉnh.</small>
+        <button type="submit">Thêm quyền</button>
+    </form>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Quyền</th><th>Mã / route</th><th>Loại</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var permission in Model.Permissions)
+                {
+                    <tr>
+                        <td><strong>@permission.Name</strong><br /><small class="muted">@permission.Description</small></td>
+                        <td><code>@permission.Code</code><br />@if (!string.IsNullOrEmpty(permission.ControllerName)) { <small>@permission.ControllerName / @permission.ActionName</small> }</td>
+                        <td>@(permission.IsSystem ? "Hệ thống" : "Tùy chỉnh")</td>
+                        <td>
+                            @if (!permission.IsSystem)
+                            {
+                                <form method="post" asp-action="Delete" asp-route-id="@permission.Id">
+                                    <button class="btn btn-danger-outline small" type="submit">Xóa</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

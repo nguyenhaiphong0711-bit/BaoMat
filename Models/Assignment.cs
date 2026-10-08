@@ -12,5 +12,6 @@ public class Assignment
     public DateTime DueDate { get; set; }
     public bool IsPublished { get; set; }
     public bool IsArchived { get; set; }
+    public List<StoredFileReference> Attachments { get; set; } = new();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -26,7 +26,21 @@ else
                 {
                     <tr>
                         <td><strong>@submission.StudentName</strong><br /><small class="muted">@submission.StudentEmail</small></td>
-                        <td class="submission-content">@submission.Content</td>
+                        <td>
+                            @if (!string.IsNullOrWhiteSpace(submission.Content))
+                            {
+                                <p class="submission-content">@submission.Content</p>
+                            }
+                            @if (submission.Attachments.Count > 0)
+                            {
+                                <div class="file-list">
+                                    @foreach (var attachment in submission.Attachments)
+                                    {
+                                        <a asp-controller="File" asp-action="Download" asp-route-id="@attachment.Id">↧ @attachment.FileName</a>
+                                    }
+                                </div>
+                            }
+                        </td>
                         <td>@submission.SubmittedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
                         <td><span class="badge @(submission.Grade.HasValue ? "badge-open" : "badge-pending")">@(submission.Grade?.ToString("0.##") ?? "Chưa chấm")</span></td>
                         <td><a class="btn btn-secondary small" asp-action="Grade" asp-route-id="@submission.Id">@(submission.Grade.HasValue ? "Sửa điểm" : "Chấm bài")</a></td>

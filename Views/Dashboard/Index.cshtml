@@ -2,6 +2,11 @@
     ViewData["Title"] = "Tổng quan";
     var isAdmin = User.IsInRole(Roles.Admin);
     var isTeacher = User.IsInRole(Roles.Teacher);
+    var isStudent = User.IsInRole(Roles.Student);
+    var canViewClasses = isAdmin || User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ClassesView);
+    var canViewSchedule = isAdmin || User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ScheduleView);
+    var canViewRegistration = isStudent && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.CourseRegistrationView);
+    var canRequestAvailability = isTeacher && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ScheduleAvailability);
     var displayName = User.Identity?.Name?.Split(' ').FirstOrDefault() ?? "bạn";
 }
 
@@ -17,25 +22,50 @@
                     : "Truy cập lớp học, theo dõi lịch và tiếp tục hành trình học tập của bạn.")
         </p>
     </div>
-    <div class="hero-actions">
-        <a class="btn" asp-controller="@(isAdmin ? "Class" : "Schedule")" asp-action="@(isAdmin ? "Index" : "Index")">
-            @(isAdmin ? "Mở danh sách lớp" : "Xem lịch học")
-        </a>
-    </div>
+    @if (canViewClasses || canViewSchedule || canViewRegistration)
+    {
+        <div class="hero-actions">
+            @if (canViewClasses)
+            {
+                <a class="btn" asp-controller="Class" asp-action="Index">Mở danh sách lớp</a>
+            }
+            else if (canViewSchedule)
+            {
+                <a class="btn" asp-controller="Schedule" asp-action="Index">Xem lịch học</a>
+            }
+            else if (canViewRegistration)
+            {
+                <a class="btn" asp-controller="CourseRegistration" asp-action="Index">Đăng ký môn / lớp</a>
+            }
+        </div>
+    }
 </section>
 
 <div class="dashboard-section-title">
     <div><h2>Lối tắt</h2><p>Các khu vực bạn thường xuyên sử dụng</p></div>
 </div>
 <section class="dashboard-shortcuts">
-    <a class="shortcut-card" asp-controller="Class" asp-action="Index">
-        <span class="shortcut-icon">▤</span>
-        <div><strong>@(User.IsInRole(Roles.Student) ? "Lớp học của tôi" : "Lớp học")</strong><small>Xem lớp, học viên và nội dung khóa học</small></div>
-    </a>
-    <a class="shortcut-card" asp-controller="Schedule" asp-action="Index">
-        <span class="shortcut-icon">◷</span>
-        <div><strong>Lịch học</strong><small>Theo dõi các buổi học và trạng thái đăng ký</small></div>
-    </a>
+    @if (canViewClasses)
+    {
+        <a class="shortcut-card" asp-controller="Class" asp-action="Index">
+            <span class="shortcut-icon">▤</span>
+            <div><strong>@(isStudent ? "Lớp học của tôi" : "Lớp học")</strong><small>Xem lớp, học viên và nội dung khóa học</small></div>
+        </a>
+    }
+    @if (canViewSchedule)
+    {
+        <a class="shortcut-card" asp-controller="Schedule" asp-action="Index">
+            <span class="shortcut-icon">◷</span>
+            <div><strong>Lịch học</strong><small>Theo dõi các buổi học và trạng thái đăng ký</small></div>
+        </a>
+    }
+    @if (canViewRegistration)
+    {
+        <a class="shortcut-card" asp-controller="CourseRegistration" asp-action="Index">
+            <span class="shortcut-icon">▦</span>
+            <div><strong>Đăng ký môn / lớp</strong><small>Xem các lớp thuộc đề cương đang mở đăng ký</small></div>
+        </a>
+    }
     @if (isAdmin)
     {
         <a class="shortcut-card" asp-controller="Subject" asp-action="Index">
@@ -55,7 +85,7 @@
             <div><strong>Người dùng</strong><small>Quản lý tài khoản và vai trò</small></div>
         </a>
     }
-    @if (isTeacher)
+    @if (canRequestAvailability)
     {
         <a class="shortcut-card" asp-controller="Schedule" asp-action="Availability">
             <span class="shortcut-icon">◷</span>

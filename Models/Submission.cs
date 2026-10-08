@@ -9,6 +9,7 @@ public class Submission
     public ObjectId AssignmentId { get; set; }
     public ObjectId StudentId { get; set; }
     public string Content { get; set; } = "";
+    public List<StoredFileReference> Attachments { get; set; } = new();
     public double? Grade { get; set; }
     public string TeacherComment { get; set; } = "";
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;

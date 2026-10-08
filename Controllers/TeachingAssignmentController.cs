@@ -50,7 +50,9 @@ public sealed class TeachingAssignmentController(ClassService classes, UserServi
         ViewBag.Filter = filter;
         ViewBag.Departments = departmentList;
         ViewBag.Subjects = allSubjects;
-        return View(rows);
+        var page = PaginationViewModel.Apply(rows, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
 
     [HttpGet]

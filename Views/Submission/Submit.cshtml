@@ -3,7 +3,14 @@
     ViewData["Title"] = "Nộp bài";
 }
 
-<div class="page-heading"><div><span class="eyebrow">BÀI TẬP</span><h1>@ViewBag.Assignment.Title</h1><p class="muted">Nộp câu trả lời trước hạn để được giảng viên đánh giá.</p></div></div>
+@section Styles {
+    <link rel="stylesheet" href="~/filepond/filepond.min.css" asp-append-version="true" />
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">BÀI TẬP · @ViewBag.Assignment.DueDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span><h1>@ViewBag.Assignment.Title</h1><p class="muted">Nộp câu trả lời hoặc tải tệp bài làm lên trước hạn.</p></div>
+    <a class="btn btn-ghost" asp-controller="Assignment" asp-action="Index" asp-route-classId="@ViewBag.Assignment.ClassId">Quay lại danh sách</a>
+</div>
 
 @if (ViewBag.Submission is LMS.Models.Submission submission && submission.Grade.HasValue)
 {
@@ -14,9 +21,36 @@
     </div>
 }
 
-<form method="post" class="form form-card">
+<form method="post" class="form form-card submission-form">
+    <div asp-validation-summary="All" class="error"></div>
     <label asp-for="Content">Câu trả lời</label>
-    <textarea asp-for="Content" rows="12"></textarea>
+    <textarea asp-for="Content" rows="10" placeholder="Nhập nội dung bài làm hoặc hướng dẫn giảng viên xem tệp đính kèm..."></textarea>
     <span asp-validation-for="Content" class="error"></span>
-    <button>Nộp bài</button>
+
+    <label for="submission-files">Tệp bài làm</label>
+    <input id="submission-files" type="file" data-filepond
+           data-process-url="@Url.Action("SubmissionFile", "Upload", new { assignmentId = ViewBag.Assignment.Id })"
+           data-revert-url="@Url.Action("Revert", "Upload")" data-ids-target="UploadedFileIds" />
+    <input asp-for="UploadedFileIds" type="hidden" />
+    <span asp-validation-for="UploadedFileIds" class="error"></span>
+    @if (ViewBag.Submission is LMS.Models.Submission currentSubmission && currentSubmission.Attachments.Count > 0)
+    {
+        <div class="uploaded-files">
+            <strong>Tệp đã nộp</strong>
+            @foreach (var attachment in currentSubmission.Attachments)
+            {
+                <div class="uploaded-file" data-uploaded-file>
+                    <a asp-controller="File" asp-action="Download" asp-route-id="@attachment.Id">@attachment.FileName</a>
+                    <button type="button" class="btn btn-ghost small" data-remove-uploaded-file="@attachment.Id" data-ids-target="UploadedFileIds">Gỡ tệp</button>
+                </div>
+            }
+        </div>
+    }
+    <small class="muted">Tối đa 5 tệp, mỗi tệp tối đa 25 MB. Hỗ trợ PDF, Office, TXT, CSV, ZIP, PNG, JPG.</small>
+    <button type="submit">Nộp bài tập</button>
 </form>
+
+@section Scripts {
+    <script src="~/filepond/filepond.min.js" asp-append-version="true"></script>
+    <script src="~/js/filepond-lms.js" asp-append-version="true"></script>
+}

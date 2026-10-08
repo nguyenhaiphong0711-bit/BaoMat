@@ -8,17 +8,30 @@
     <h1>Chào mừng trở lại</h1>
     <p class="muted">Đăng nhập để tiếp tục vào không gian học tập của bạn.</p>
     <form method="post">
+        @if (TempData["PasswordReset"] is string passwordReset)
+        {
+            <div class="flash flash-success" role="status">@passwordReset</div>
+        }
         <div asp-validation-summary="All" class="error"></div>
 
         <label asp-for="Email">Email</label>
-        <input asp-for="Email" />
+        <input asp-for="Email" type="email" autocomplete="username" />
         <span asp-validation-for="Email" class="error"></span>
 
         <label asp-for="Password">Mật khẩu</label>
-        <input asp-for="Password" type="password" />
+        <div class="password-field">
+            <input asp-for="Password" type="password" autocomplete="current-password" data-password-input />
+            <button class="password-visibility" type="button" data-password-toggle aria-label="Hiển thị mật khẩu" aria-pressed="false">Hiện</button>
+        </div>
         <span asp-validation-for="Password" class="error"></span>
 
+        <label class="remember-me"><input asp-for="RememberMe" /> Ghi nhớ đăng nhập trên thiết bị này</label>
         <button type="submit">Đăng nhập</button>
     </form>
+    <a class="auth-help-link" asp-action="ForgotPassword">Quên mật khẩu?</a>
     <p class="hint">Demo: admin@lms.com / Admin@123</p>
 </div>
+
+@section Scripts {
+    <script src="~/js/password-visibility.js" asp-append-version="true"></script>
+}

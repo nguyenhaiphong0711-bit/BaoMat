@@ -5,7 +5,7 @@
 
 <div class="title-row">
     <div><span class="eyebrow">@ViewBag.ClassName</span><h1>Bài học</h1><p class="muted">Tài liệu và nội dung học tập của lớp.</p></div>
-    @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
+    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.LessonsManage))
     {
         <a class="btn" asp-action="Create" asp-route-classId="@ViewBag.ClassId">+ Tạo bài học</a>
     }
@@ -17,7 +17,7 @@
 <form method="get" class="filter-bar">
     <input type="hidden" name="classId" value="@ViewBag.ClassId" />
     <input name="Query" value="@filter.Query" placeholder="Tìm tiêu đề hoặc nội dung..." />
-    @if (!User.IsInRole(Roles.Student))
+    @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.LessonsManage))
     {
         <select name="Status">
             <option value="">Mọi trạng thái</option>
@@ -43,7 +43,7 @@ else
             <article class="card lesson-card">
                 <div class="title-row"><h3>@x.Title</h3><span class="badge @(x.IsPublished ? "badge-open" : "badge-muted")">@(x.IsPublished ? "Đã xuất bản" : "Bản nháp")</span></div>
                 <p>@x.Content</p>
-                @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher))
+                @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.LessonsManage))
                 {
                     <div class="action-row">
                         <a class="btn btn-secondary small" asp-action="Edit" asp-route-id="@x.Id">Chỉnh sửa</a>

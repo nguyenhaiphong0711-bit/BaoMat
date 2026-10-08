@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using LMS.Models;
 
 namespace LMS.Middleware;
 
@@ -43,9 +44,33 @@ public sealed class AppCookieAuthenticationEvents(UserService users) : CookieAut
         var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         var user = userId is null ? null : await users.GetAsync(userId);
         var roleClaim = context.Principal?.FindFirstValue(ClaimTypes.Role);
+        var ticketIssuedAt = context.Properties?.IssuedUtc?.UtcDateTime;
 
-        if (user is { IsActive: true } && user.Role == roleClaim)
+        if (user is { IsActive: true } &&
+            user.Role == roleClaim &&
+            (user.PasswordChangedAt is null || ticketIssuedAt >= user.PasswordChangedAt.Value))
+        {
+            if (context.Principal?.Identity is not ClaimsIdentity identity)
+                return;
+
+            var existing = identity.FindAll(PermissionCodes.ClaimType)
+                .Select(claim => claim.Value)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            var current = user.PermissionCodes
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            if (existing.SequenceEqual(current, StringComparer.Ordinal))
+                return;
+
+            foreach (var claim in identity.FindAll(PermissionCodes.ClaimType).ToArray())
+                identity.RemoveClaim(claim);
+            foreach (var code in current)
+                identity.AddClaim(new Claim(PermissionCodes.ClaimType, code));
+            context.ShouldRenew = true;
             return;
+        }
 
         context.RejectPrincipal();
         await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

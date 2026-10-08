@@ -1,0 +1,57 @@
+@model List<LMS.ViewModels.CourseRegistrationReviewViewModel>
+@{
+    ViewData["Title"] = "Duyệt đăng ký môn/lớp";
+}
+
+<div class="page-heading">
+    <div>
+        <span class="eyebrow">COURSE REGISTRATION REVIEW</span>
+        <h1>Duyệt đăng ký môn/lớp</h1>
+        <p class="muted">Chỉ yêu cầu được duyệt mới ghi danh sinh viên vào lớp và tạo khoản học phí.</p>
+    </div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="empty-state">
+        <span class="empty-icon">✓</span>
+        <h2>Không có yêu cầu chờ duyệt</h2>
+        <p class="muted">Các yêu cầu đăng ký mới sẽ xuất hiện tại đây.</p>
+    </div>
+}
+else
+{
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Sinh viên</th><th>Môn học</th><th>Lớp</th><th>Học kỳ</th><th>Thời gian gửi</th><th>Thao tác</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var request in Model)
+                {
+                    <tr>
+                        <td><strong>@request.StudentName</strong><small>@request.StudentEmail</small></td>
+                        <td>@request.SubjectName</td>
+                        <td>@request.ClassName</td>
+                        <td>@request.TermName</td>
+                        <td>@request.RequestedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>
+                            <div class="action-row">
+                                <form method="post" asp-action="Review">
+                                    <input type="hidden" name="registrationId" value="@request.RegistrationId" />
+                                    <input type="hidden" name="approve" value="true" />
+                                    <button class="btn small" type="submit">Duyệt</button>
+                                </form>
+                                <form method="post" asp-action="Review">
+                                    <input type="hidden" name="registrationId" value="@request.RegistrationId" />
+                                    <input type="hidden" name="approve" value="false" />
+                                    <button class="btn btn-danger-outline small" type="submit">Từ chối</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

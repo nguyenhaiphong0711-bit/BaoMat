@@ -28,6 +28,8 @@ public class ActivityLogController : Controller
         if (filter.CreatedTo.HasValue)
             logs = logs.Where(x => x.CreatedAt.Date <= filter.CreatedTo.Value.Date).ToList();
         ViewBag.Filter = filter;
-        return View(logs);
+        var page = PaginationViewModel.Apply(logs, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
 }

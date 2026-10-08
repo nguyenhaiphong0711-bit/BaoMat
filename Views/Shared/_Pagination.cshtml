@@ -1,0 +1,77 @@
+@model LMS.ViewModels.PaginationViewModel
+@{
+    var request = ViewContext.HttpContext.Request;
+    var query = request.Query.ToDictionary(
+        item => item.Key,
+        item => (string?)item.Value.ToString());
+    string PageUrl(int pageNumber)
+    {
+        query["page"] = pageNumber.ToString();
+        query["pageSize"] = Model.PageSize.ToString();
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(
+            request.Path, query);
+    }
+    string PageSizeUrl(int pageSize)
+    {
+        query.Remove("page");
+        query["pageSize"] = pageSize.ToString();
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString(
+            request.Path, query);
+    }
+    var firstVisiblePage = Math.Max(1, Model.Page - 2);
+    var lastVisiblePage = Math.Min(Model.TotalPages, firstVisiblePage + 4);
+    firstVisiblePage = Math.Max(1, lastVisiblePage - 4);
+}
+
+<nav class="pagination-bar" aria-label="Phân trang">
+    <div class="pagination-summary">
+        @if (Model.TotalCount == 0)
+        {
+            <span>Không có dữ liệu</span>
+        }
+        else
+        {
+            <span>Hiển thị <strong>@Model.FirstItem–@Model.LastItem</strong> trong <strong>@Model.TotalCount</strong> mục</span>
+        }
+        <span class="pagination-size">
+            Mỗi trang:
+            @foreach (var size in new[] { 10, 20, 50 })
+            {
+                if (size == Model.PageSize)
+                {
+                    <strong aria-current="true">@size</strong>
+                }
+                else
+                {
+                    <a href="@PageSizeUrl(size)">@size</a>
+                }
+            }
+        </span>
+    </div>
+    @if (Model.TotalPages > 1)
+    {
+        <div class="pagination-links">
+            @if (Model.Page > 1)
+            {
+                <a href="@PageUrl(1)" aria-label="Trang đầu">«</a>
+                <a href="@PageUrl(Model.Page - 1)" aria-label="Trang trước">‹</a>
+            }
+            @for (var pageNumber = firstVisiblePage; pageNumber <= lastVisiblePage; pageNumber++)
+            {
+                if (pageNumber == Model.Page)
+                {
+                    <span class="current-page" aria-current="page">@pageNumber</span>
+                }
+                else
+                {
+                    <a href="@PageUrl(pageNumber)">@pageNumber</a>
+                }
+            }
+            @if (Model.Page < Model.TotalPages)
+            {
+                <a href="@PageUrl(Model.Page + 1)" aria-label="Trang sau">›</a>
+                <a href="@PageUrl(Model.TotalPages)" aria-label="Trang cuối">»</a>
+            }
+        </div>
+    }
+</nav>

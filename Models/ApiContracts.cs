@@ -13,7 +13,7 @@ public sealed record ApiLoginRequest
 }
 
 /// <summary>Identity and role information for the current session.</summary>
-public sealed record ApiIdentityResponse(string Id, string FullName, string Email, string Role);
+public sealed record ApiIdentityResponse(string Id, string FullName, string Email, string Role, IReadOnlyList<string> PermissionCodes);
 
 /// <summary>A user record without password or authentication internals.</summary>
 public sealed record ApiUserResponse(string Id, string FullName, string Email, string Role, bool IsActive, DateTimeOffset CreatedAt);
@@ -35,7 +35,16 @@ public sealed record ApiCreateUserRequest
 }
 
 /// <summary>A class and its subject, teacher, and student membership.</summary>
-public sealed record ApiClassResponse(string Id, string Name, string Description, string SubjectId, string TeacherId, IReadOnlyList<string> StudentIds, DateTimeOffset CreatedAt);
+public sealed record ApiClassResponse(
+    string Id,
+    string Name,
+    string Description,
+    string SubjectId,
+    string TeacherId,
+    IReadOnlyList<string> StudentIds,
+    DateTimeOffset CreatedAt,
+    string? AcademicTermId,
+    int EnrollmentCapacity);
 
 /// <summary>Fields required to create a class.</summary>
 public sealed record ApiCreateClassRequest
@@ -51,6 +60,9 @@ public sealed record ApiCreateClassRequest
 
     [Required]
     public required string TeacherId { get; init; }
+
+    public string AcademicTermId { get; init; } = "";
+    [Range(1, 500)] public int EnrollmentCapacity { get; init; } = 40;
 
     public IReadOnlyList<string> StudentIds { get; init; } = Array.Empty<string>();
 }

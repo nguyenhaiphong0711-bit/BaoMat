@@ -9,6 +9,8 @@ public class ClassRoom
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
     public ObjectId SubjectId { get; set; }
+    public ObjectId? AcademicTermId { get; set; }
+    public int EnrollmentCapacity { get; set; } = 40;
     public ObjectId TeacherId { get; set; }
     public List<ObjectId> StudentIds { get; set; } = new();
     public bool IsArchived { get; set; }

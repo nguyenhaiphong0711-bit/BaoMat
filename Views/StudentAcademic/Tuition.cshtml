@@ -1,0 +1,81 @@
+@model LMS.ViewModels.StudentAcademicDashboardViewModel
+@{
+    ViewData["Title"] = "Học phí";
+    var totalDue = Model.TuitionItems.Where(x => x.Status == LMS.Models.TuitionInvoiceStatuses.Pending).Sum(x => x.AmountVnd);
+    var totalPaid = Model.TuitionItems.Where(x => x.Status == LMS.Models.TuitionInvoiceStatuses.Paid).Sum(x => x.AmountVnd);
+    var hasUnconfiguredFee = Model.TuitionItems.Any(x => x.TuitionPerCredit <= 0);
+}
+
+<div class="page-heading">
+    <div><span class="eyebrow">STUDENT BILLING</span><h1>Học phí</h1><p class="muted">Khoản thu được tính theo số tín chỉ của từng môn và đơn giá do quản trị viên cấu hình theo học kỳ.</p></div>
+    <a class="btn btn-secondary" asp-action="Progress">Môn học &amp; điểm</a>
+</div>
+
+<section class="student-academic-summary tuition-summary">
+    <article class="card student-summary-card"><span class="summary-icon">◷</span><div><small>Còn phải thanh toán</small><strong>@totalDue.ToString("N0") ₫</strong></div></article>
+    <article class="card student-summary-card"><span class="summary-icon paid-icon">✓</span><div><small>Đã thanh toán</small><strong>@totalPaid.ToString("N0") ₫</strong></div></article>
+    <article class="card student-summary-card"><span class="summary-icon">◈</span><div><small>Môn đã ghi danh</small><strong>@Model.TuitionItems.Count</strong></div></article>
+</section>
+
+@if (hasUnconfiguredFee)
+{
+    <div class="notice notice-danger tuition-configuration-notice">Một hoặc nhiều học kỳ chưa được cấu hình đơn giá học phí mỗi tín chỉ. Vui lòng liên hệ quản trị viên.</div>
+}
+
+@if (Model.TuitionItems.Count == 0)
+{
+    <div class="empty-state"><span class="empty-icon">₫</span><h2>Chưa có khoản học phí</h2><p class="muted">Học phí sẽ được tạo khi bạn đăng ký môn học.</p></div>
+}
+else
+{
+    <div class="table-wrap">
+        <table class="student-course-table tuition-table">
+            <thead><tr><th>Môn học</th><th>Học kỳ</th><th>Tín chỉ</th><th>Đơn giá / tín chỉ</th><th>Thành tiền</th><th>Trạng thái</th><th>Thanh toán</th></tr></thead>
+            <tbody>
+                @foreach (var item in Model.TuitionItems)
+                {
+                    <tr>
+                        <td><strong>@item.SubjectName</strong><small>@item.SubjectCode · @item.ClassName</small></td>
+                        <td>@item.TermName</td>
+                        <td><span class="credit-pill">@item.Credits TC</span></td>
+                        <td>@(item.TuitionPerCredit > 0 ? $"{item.TuitionPerCredit:N0} ₫" : "Chưa cấu hình")</td>
+                        <td><strong>@item.AmountVnd.ToString("N0") ₫</strong></td>
+                        <td>
+                            @if (item.Status == LMS.Models.TuitionInvoiceStatuses.Paid)
+                            {
+                                <span class="badge badge-open">Đã thanh toán</span>
+                            }
+                            else if (item.Status == LMS.Models.TuitionInvoiceStatuses.Cancelled)
+                            {
+                                <span class="badge badge-muted">Đã hủy</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-pending">Chưa thanh toán</span>
+                            }
+                        </td>
+                        <td>
+                            @if (item.CanPay && !string.IsNullOrEmpty(item.InvoiceId))
+                            {
+                                <form method="post" asp-action="Pay" class="inline-form">
+                                    <input type="hidden" name="classId" value="@item.ClassId" />
+                                    <button class="btn small" type="submit">Thanh toán VNPAY</button>
+                                </form>
+                            }
+                            else if (item.Status == LMS.Models.TuitionInvoiceStatuses.Pending && item.TuitionPerCredit <= 0)
+                            {
+                                <span class="muted">Chờ cấu hình phí</span>
+                            }
+                            else
+                            {
+                                <span class="muted">—</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<p class="student-grade-note">Hóa đơn giữ nguyên số tín chỉ và đơn giá tại thời điểm lập. Rút khỏi môn học đã thanh toán cần được quản trị viên xử lý hoàn phí.</p>

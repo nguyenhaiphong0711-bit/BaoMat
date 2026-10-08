@@ -6,6 +6,7 @@
     <title>@(ViewData["Title"] ?? "LearnSpace") · LearnSpace</title>
     <meta name="theme-color" content="#f5f7fb" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     @if (User.Identity?.IsAuthenticated == true)
@@ -13,29 +14,53 @@
         <div class="app-shell">
             <aside class="sidebar">
                 <a class="brand" asp-controller="Dashboard" asp-action="Index"><span class="brand-mark">L</span><span>LearnSpace<small>LEARNING MANAGEMENT</small></span></a>
+                <div class="sidebar-scroll">
                 <div class="nav-caption">WORKSPACE</div>
                 <nav class="side-nav">
                     <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index"><span class="nav-icon">◫</span>Tổng quan</a>
-                    <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Class" ? "active" : "")" asp-controller="Class" asp-action="Index"><span class="nav-icon">▤</span>@(User.IsInRole(Roles.Student) ? "Lớp của tôi" : "Lớp học")</a>
-                    <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Schedule" ? "active" : "")" asp-controller="Schedule" asp-action="Index"><span class="nav-icon">◷</span>Lịch học</a>
-                    @if (User.IsInRole(Roles.Teacher))
+                    @if (User.IsInRole(Roles.Admin) || User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ClassesView))
+                    {
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Class" ? "active" : "")" asp-controller="Class" asp-action="Index"><span class="nav-icon">▤</span>@(User.IsInRole(Roles.Student) ? "Lớp của tôi" : "Lớp học")</a>
+                    }
+                    @if (User.IsInRole(Roles.Admin) || User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ScheduleView))
+                    {
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Schedule" ? "active" : "")" asp-controller="Schedule" asp-action="Index"><span class="nav-icon">◷</span>Lịch học</a>
+                    }
+                    @if (User.IsInRole(Roles.Teacher) && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ScheduleAvailability))
                     {
                         <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Availability" ? "active" : "")" asp-controller="Schedule" asp-action="Availability"><span class="nav-icon">◷</span>Giờ có thể dạy</a>
+                    }
+                    @if (User.IsInRole(Roles.Student) && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.CourseRegistrationView))
+                    {
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "CourseRegistration" ? "active" : "")" asp-controller="CourseRegistration" asp-action="Index"><span class="nav-icon">▦</span>Đăng ký môn/lớp</a>
+                    }
+                    @if (User.IsInRole(Roles.Student) && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.StudentProgressView))
+                    {
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "StudentAcademic" && ViewContext.RouteData.Values["action"]?.ToString() == "Progress" ? "active" : "")" asp-controller="StudentAcademic" asp-action="Progress"><span class="nav-icon">◫</span>Môn học &amp; điểm</a>
+                    }
+                    @if (User.IsInRole(Roles.Student) && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.TuitionView))
+                    {
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "StudentAcademic" && ViewContext.RouteData.Values["action"]?.ToString() == "Tuition" ? "active" : "")" asp-controller="StudentAcademic" asp-action="Tuition"><span class="nav-icon">₫</span>Học phí</a>
                     }
                 </nav>
                 @if (User.IsInRole(Roles.Admin))
                 {
                     <div class="nav-caption">QUẢN TRỊ</div>
                     <nav class="side-nav">
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "CourseRegistrationAdmin" ? "active" : "")" asp-controller="CourseRegistrationAdmin" asp-action="Index"><span class="nav-icon">✓</span>Duyệt đăng ký</a>
                         <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Department" ? "active" : "")" asp-controller="Department" asp-action="Index"><span class="nav-icon">▦</span>Khoa</a>
                         <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Subject" ? "active" : "")" asp-controller="Subject" asp-action="Index"><span class="nav-icon">◈</span>Môn học</a>
                         <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "TeachingAssignment" && ViewContext.RouteData.Values["action"]?.ToString() == "Index" ? "active" : "")" asp-controller="TeachingAssignment" asp-action="Index"><span class="nav-icon">⇄</span>Phân công lớp</a>
                         <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "TeacherSubjects" ? "active" : "")" asp-controller="TeachingAssignment" asp-action="TeacherSubjects"><span class="nav-icon">◇</span>Môn giảng viên</a>
                         <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "AvailabilityRequests" ? "active" : "")" asp-controller="Schedule" asp-action="AvailabilityRequests"><span class="nav-icon">✓</span>Duyệt giờ dạy</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "AcademicProgram" ? "active" : "")" asp-controller="AcademicProgram" asp-action="Index"><span class="nav-icon">▧</span>Ngành học</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "AcademicTerm" ? "active" : "")" asp-controller="AcademicTerm" asp-action="Index"><span class="nav-icon">◷</span>Học kỳ</a>
                         <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "User" ? "active" : "")" asp-controller="User" asp-action="Index"><span class="nav-icon">♙</span>Người dùng</a>
+                        <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Permission" ? "active" : "")" asp-controller="Permission" asp-action="Index"><span class="nav-icon">⚿</span>Phân quyền</a>
                         <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "ActivityLog" ? "active" : "")" asp-controller="ActivityLog" asp-action="Index"><span class="nav-icon">≡</span>Nhật ký hoạt động</a>
                     </nav>
                 }
+                </div>
                 <div class="sidebar-bottom">
                     <div class="account-chip">
                         <span class="avatar">@((User.Identity.Name ?? "U").Substring(0, 1).ToUpperInvariant())</span>
@@ -59,6 +84,10 @@
                         <div class="flash flash-error" role="alert">@error</div>
                     }
                     @RenderBody()
+                    @if (ViewBag.Pagination is LMS.ViewModels.PaginationViewModel pagination)
+                    {
+                        <partial name="_Pagination" model="pagination" />
+                    }
                     <footer class="app-footer">LearnSpace <span>·</span> Nền tảng quản lý học tập</footer>
                 </main>
             </div>
@@ -70,5 +99,6 @@
             @RenderBody()
         </main>
     }
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

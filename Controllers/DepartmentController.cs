@@ -26,7 +26,9 @@ public sealed class DepartmentController(DepartmentService departments, SubjectS
         ViewBag.SubjectCounts = allSubjects.GroupBy(x => x.DepartmentId.ToString())
             .ToDictionary(x => x.Key, x => x.Count());
         ViewBag.Filter = filter;
-        return View(list);
+        var page = PaginationViewModel.Apply(list, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
 
     [HttpGet]

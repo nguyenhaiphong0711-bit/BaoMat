@@ -1,6 +1,9 @@
 **/bin/
 **/obj/
 .git/
+.env
+.env.*
+!.env.example
 .vs/
 .vscode/
 TestResults/

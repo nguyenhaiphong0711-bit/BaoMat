@@ -43,7 +43,15 @@
                     <td><span class="badge">@x.Role</span></td>
                     <td><span class="badge @(x.IsActive ? "badge-open" : "badge-muted")">@(x.IsActive ? "Đang hoạt động" : "Đã vô hiệu hóa")</span></td>
                     <td>@x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
-                    <td><form method="post" asp-action="Toggle" asp-route-id="@x.Id"><button class="btn @(x.IsActive ? "btn-danger-outline" : "btn-secondary") small">@(x.IsActive ? "Vô hiệu hóa" : "Kích hoạt")</button></form></td>
+                    <td>
+                        <div class="action-row">
+                            @if (x.Role is LMS.Models.Roles.Teacher or LMS.Models.Roles.Student)
+                            {
+                                <a class="btn btn-secondary small" asp-controller="Permission" asp-action="Index" asp-route-userId="@x.Id">Phân quyền / hồ sơ</a>
+                            }
+                            <form method="post" asp-action="Toggle" asp-route-id="@x.Id"><button class="btn @(x.IsActive ? "btn-danger-outline" : "btn-secondary") small">@(x.IsActive ? "Vô hiệu hóa" : "Kích hoạt")</button></form>
+                        </div>
+                    </td>
                 </tr>
             }
             @if (Model.Count == 0) { <tr><td colspan="6" class="muted">Không tìm thấy tài khoản phù hợp.</td></tr> }

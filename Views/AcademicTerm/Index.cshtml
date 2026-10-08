@@ -1,0 +1,45 @@
+@model LMS.ViewModels.AcademicTermViewModel
+@{
+    ViewData["Title"] = "Học kỳ";
+    var terms = ViewBag.Terms as List<LMS.Models.AcademicTerm> ?? new();
+}
+
+<div class="page-heading"><div><span class="eyebrow">ACADEMIC CALENDAR</span><h1>Học kỳ và đợt đăng ký</h1><p class="muted">Mỗi lớp mở trong một học kỳ; chỉ học kỳ đang áp dụng nhận đăng ký mới. Đơn giá tín chỉ được cấu hình riêng cho năm học và lưu thành snapshot trên hóa đơn.</p></div></div>
+<div class="academic-program-layout">
+    <section class="card">
+        <div class="section-heading"><span class="eyebrow">@(string.IsNullOrEmpty(Model.Id) ? "TẠO MỚI" : "CHỈNH SỬA")</span><h2>Thông tin học kỳ</h2></div>
+        <form method="post" asp-action="Save" class="form">
+            <input asp-for="Id" type="hidden" />
+            <div asp-validation-summary="All" class="error"></div>
+            <div class="form-grid">
+                <div><label asp-for="Code">Mã học kỳ</label><input asp-for="Code" /></div>
+                <div><label asp-for="Name">Tên hiển thị</label><input asp-for="Name" /></div>
+                <div><label asp-for="AcademicYear">Năm học</label><input asp-for="AcademicYear" placeholder="2026-2027" /></div>
+                <div><label asp-for="SemesterNumber">Học kỳ thứ</label><input asp-for="SemesterNumber" type="number" min="1" max="3" /></div>
+                <div><label asp-for="StartsAt">Ngày bắt đầu</label><input asp-for="StartsAt" type="datetime-local" /></div>
+                <div><label asp-for="EndsAt">Ngày kết thúc</label><input asp-for="EndsAt" type="datetime-local" /></div>
+                <div><label asp-for="RegistrationOpensAt">Mở đăng ký</label><input asp-for="RegistrationOpensAt" type="datetime-local" /></div>
+                <div><label asp-for="RegistrationClosesAt">Đóng đăng ký</label><input asp-for="RegistrationClosesAt" type="datetime-local" /></div>
+                <div><label asp-for="TuitionPerCredit">Học phí / tín chỉ (VND)</label><input asp-for="TuitionPerCredit" type="number" min="0" step="1000" placeholder="Ví dụ: 500000" /></div>
+            </div>
+            <p class="muted">Thay đổi đơn giá chỉ áp dụng cho hóa đơn tạo sau đó; hóa đơn đã lập giữ nguyên mức phí ban đầu.</p>
+            <label class="checkbox-row"><input asp-for="IsActive" /> Học kỳ đang áp dụng (tắt học kỳ đang áp dụng trước)</label>
+            <button type="submit">Lưu học kỳ</button>
+        </form>
+    </section>
+    <section class="card">
+        <div class="section-heading"><span class="eyebrow">DANH SÁCH</span><h2>Các học kỳ</h2></div>
+        <div class="program-list">
+            @foreach (var term in terms)
+            {
+                <article class="program-row">
+                    <div><strong>@term.Name</strong><small>@term.Code · @term.AcademicYear · đăng ký đến @term.RegistrationClosesAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</small></div>
+                    <div class="action-row">
+                        <span class="badge @(term.IsActive ? "badge-open" : "badge-muted")">@(term.IsActive ? "Đang áp dụng" : "Đã đóng")</span>
+                        <a class="btn btn-ghost small" asp-action="Index" asp-route-id="@term.Id">Sửa</a>
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+</div>

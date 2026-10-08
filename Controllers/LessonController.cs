@@ -1,9 +1,11 @@
 using LMS.Models; using LMS.Services; using LMS.ViewModels; using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc; using MongoDB.Bson;
+using LMS.Security;
 namespace LMS.Controllers;
 [Authorize] public class LessonController : Controller
 {
     private readonly LessonService _lessons; private readonly ClassService _classes; private readonly UserService _users;
     public LessonController(LessonService l,ClassService c,UserService u){_lessons=l;_classes=c;_users=u;}
+    [RequirePermission(PermissionCodes.LessonsView)]
     public async Task<IActionResult> Index(string classId, CatalogFilterViewModel filter)
     {
         if (!ObjectId.TryParse(classId, out var classObjectId)) return NotFound();
@@ -25,10 +27,12 @@ namespace LMS.Controllers;
         if (filter.CreatedTo.HasValue)
             lessons = lessons.Where(x => x.CreatedAt.Date <= filter.CreatedTo.Value.Date).ToList();
         ViewBag.Filter = filter;
-        return View(lessons);
+        var page = PaginationViewModel.Apply(lessons, filter.Page, filter.PageSize, out var pagination);
+        ViewBag.Pagination = pagination;
+        return View(page);
     }
 
-    [Authorize(Roles=Roles.Admin+","+Roles.Teacher)]
+    [Authorize(Roles=Roles.Admin+","+Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage)]
     public async Task<IActionResult> Create(string classId)
     {
         if (!await CanManageClassAsync(classId)) return Forbid();
@@ -37,7 +41,7 @@ namespace LMS.Controllers;
         return View(new LessonViewModel());
     }
 
-    [HttpPost,Authorize(Roles=Roles.Admin+","+Roles.Teacher),ValidateAntiForgeryToken]
+    [HttpPost,Authorize(Roles=Roles.Admin+","+Roles.Teacher),RequirePermission(PermissionCodes.LessonsManage),ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string classId, LessonViewModel vm)
     {
         if (!await CanManageClassAsync(classId)) return Forbid();
@@ -51,7 +55,7 @@ namespace LMS.Controllers;
         return RedirectToAction(nameof(Index), new { classId });
     }
 
-    [Authorize(Roles=Roles.Admin+","+Roles.Teacher)]
+    [Authorize(Roles=Roles.Admin+","+Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage)]
     public async Task<IActionResult> Edit(string id)
     {
         var lesson = await _lessons.GetAsync(id);
@@ -62,7 +66,7 @@ namespace LMS.Controllers;
         return View(new LessonViewModel { Title = lesson.Title, Content = lesson.Content, IsPublished = lesson.IsPublished });
     }
 
-    [HttpPost,Authorize(Roles=Roles.Admin+","+Roles.Teacher),ValidateAntiForgeryToken]
+    [HttpPost,Authorize(Roles=Roles.Admin+","+Roles.Teacher),RequirePermission(PermissionCodes.LessonsManage),ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string id, LessonViewModel vm)
     {
         var lesson = await _lessons.GetAsync(id);
@@ -78,7 +82,7 @@ namespace LMS.Controllers;
         return RedirectToAction(nameof(Index), new { classId = lesson.ClassId });
     }
 
-    [HttpPost, Authorize(Roles=Roles.Admin+","+Roles.Teacher), ValidateAntiForgeryToken]
+    [HttpPost, Authorize(Roles=Roles.Admin+","+Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage), ValidateAntiForgeryToken]
     public async Task<IActionResult> Archive(string id)
     {
         var lesson = await _lessons.GetAsync(id);
