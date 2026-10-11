@@ -7,7 +7,7 @@ namespace LMS.Data;
 
 public class MongoSettings
 {
-    public string ConnectionString { get; set; } = "mongodb://localhost:27017";
+    public string ConnectionString { get; set; } = "";
     public string DatabaseName { get; set; } = "LMS_Secure";
 }
 
@@ -42,8 +42,16 @@ public class MongoContext
 
     public MongoContext(IOptions<MongoSettings> options)
     {
-        var client = new MongoClient(options.Value.ConnectionString);
-        _database = client.GetDatabase(options.Value.DatabaseName);
+        var settings = options.Value;
+        if (string.IsNullOrWhiteSpace(settings.ConnectionString))
+            throw new InvalidOperationException(
+                "MongoDB is not configured. Set MongoDb__ConnectionString in the environment.");
+        if (string.IsNullOrWhiteSpace(settings.DatabaseName))
+            throw new InvalidOperationException(
+                "MongoDB database name is missing. Set MongoDb__DatabaseName in the environment.");
+
+        var client = new MongoClient(settings.ConnectionString);
+        _database = client.GetDatabase(settings.DatabaseName);
         FileBucket = new GridFSBucket(_database, new GridFSBucketOptions { BucketName = "LmsUploads" });
         Departments.Indexes.CreateOne(new CreateIndexModel<Department>(
             Builders<Department>.IndexKeys.Ascending(x => x.Code),

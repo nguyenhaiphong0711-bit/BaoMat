@@ -70,7 +70,7 @@ Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệ
 
    | Key | Value |
    |---|---|
-   | `MongoDb__ConnectionString` | MongoDB connection URI |
+   | `MongoDb__ConnectionString` | MongoDB connection URI, e.g. the Atlas `mongodb+srv://...` URI |
    | `MongoDb__DatabaseName` | `LMS_Secure` hoặc tên database mong muốn |
    | `Email__Host` | `smtp.gmail.com` |
    | `Email__Port` | `587` |
@@ -80,7 +80,7 @@ Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệ
    | `Email__SenderName` | (Không bắt buộc) mặc định `LearnSpace` |
    | `ASPNETCORE_ENVIRONMENT` | `Production` |
 
-   Đặt URI và App Password trong Render, không commit credentials vào repository. Không dùng `localhost` làm MongoDB host trên Render: trong container, `localhost` trỏ tới chính container ứng dụng.
+   Đặt URI và App Password trong Render, không commit credentials vào repository. Bắt buộc dùng MongoDB URI có thể truy cập từ Render; không dùng `localhost` vì trong container, `localhost` trỏ tới chính container ứng dụng. Ứng dụng không còn mặc định trỏ về `localhost`; nếu thiếu `MongoDb__ConnectionString`, sẽ báo rõ cấu hình còn thiếu thay vì thử kết nối sai địa chỉ.
 3. Chọn **Create Web Service**. Container bind tới `0.0.0.0` và dùng biến `PORT` Render cung cấp (mặc định dự phòng `10000`).
 4. Đảm bảo MongoDB cho phép kết nối mạng từ dịch vụ Render, sau đó mở URL được Render cấp.
 
