@@ -14,16 +14,20 @@ Mặc định dùng profile `Properties/launchSettings.json`. Nếu cổng 5173 
 
 Lỗi `npm` không tồn tại: cài Node.js rồi mở lại VS Code/Terminal để cập nhật PATH. MongoDB không chạy hoặc `.env` sai vẫn phải được xử lý như trước; React không thay đổi các yêu cầu này. Lần đầu cài thư viện cần Internet tới npm/NuGet.
 
-## Phạm vi giao diện ở bản đầu
+## Phạm vi giao diện hiện tại
 
 Đã dùng React cho:
 
 - Đăng nhập, yêu cầu OTP và đặt lại mật khẩu.
 - Dashboard theo tài khoản, số lớp thực và danh mục môn học thực.
 - Danh mục môn học: tìm kiếm, lọc khoa, phân trang; Admin thêm/sửa/xóa qua API.
-- Danh sách lớp theo phạm vi của người dùng, thông tin lớp, bài học và bài tập.
+- Danh sách lớp theo phạm vi của người dùng và thông tin lớp.
+- Bài học: tạo, sửa, lưu nháp, công bố và lưu trữ bằng React.
+- Bài tập: tạo/sửa, hạn nộp theo giờ địa phương, tệp đính kèm, công bố và lưu trữ.
+- Sinh viên: nộp nội dung hoặc tệp, nộp lại, xem điểm và nhận xét.
+- Giáo viên: xem bài nộp, tải tệp, chấm điểm và nhận xét trong lớp được phân công.
 
-Các màn hình tạo/sửa lớp, quản lý bài học/bài tập, nộp bài, chấm bài, lịch, học vụ, học phí, người dùng và phân quyền vẫn dùng Razor hiện có. React dẫn tới đúng trang đó với cùng phiên đăng nhập. Thanh bên Razor có liên kết “Không gian React” để quay lại. Đây là chuyển đổi từng phần, chưa phải thay thế toàn bộ Razor.
+Các màn hình tạo/sửa lớp, lịch, học vụ, học phí, người dùng và phân quyền vẫn dùng Razor hiện có. React dẫn tới đúng trang đó với cùng phiên đăng nhập. Thanh bên Razor có liên kết “Không gian React” để quay lại. Đây là chuyển đổi từng phần, chưa phải thay thế toàn bộ Razor.
 
 ## Cấu trúc để học và mở rộng
 
@@ -35,6 +39,7 @@ ClientApp/
   src/App.tsx        Router, bố cục, menu theo quyền
   src/AuthPages.tsx  Đăng nhập và khôi phục mật khẩu
   src/Pages.tsx      Dashboard, môn học, lớp và nội dung lớp
+  src/LearningPages.tsx  Biểu mẫu bài học/bài tập, nộp bài và chấm điểm
   src/types.ts      Kiểu dữ liệu TypeScript
   e2e/              Kiểm thử Chromium bằng Playwright
 ```
@@ -101,3 +106,36 @@ Có thể đặt `CHROMIUM_PATH` nếu muốn dùng Chromium đã cài. Runner c
 - Runner tổng hợp đạt 33 nhóm hồi quy, có 43/43 assertion Postman; kiểm tra riêng API tóm tắt lớp mới chặn người ngoài lớp và tài khoản chưa đăng nhập.
 - `dotnet run` tự khởi động Vite; host dừng thì Vite cũng dừng. Bản publish phục vụ asset/deep link khi PATH không có Node.js.
 - Docker build chưa được xác minh hoàn tất trên cloud: tải base image Microsoft bị từ chối HTTP 403 tại `centralus.data.mcr.microsoft.com`. Không tắt TLS hoặc đổi nguồn image để vượt lỗi này. Bản publish trực tiếp đã được chạy và xác minh độc lập.
+
+## State và vòng đời component
+
+Giữ cách tổ chức đơn giản cho dự án cá nhân:
+
+| Loại dữ liệu | Đặt ở đâu | Ví dụ |
+|---|---|---|
+| Phiên đăng nhập dùng chung | Context + useReducer trong `auth.tsx` | Người dùng, vai trò, quyền |
+| Dữ liệu lấy từ backend | `useRemote` tại trang cần dùng | Bài học, bài tập, bài nộp |
+| Dữ liệu đang nhập | useState trong biểu mẫu | Tiêu đề, nội dung, tệp chọn, điểm |
+| Trạng thái gửi biểu mẫu | `useAction` | Đang gửi, thông báo lỗi |
+| Bộ lọc/phân trang | URL search params | Từ khóa, khoa, số trang |
+
+Không sao chép danh sách lớp/bài tập vào AuthContext. Các giá trị tính được như hết hạn hay số tệp được tính từ dữ liệu hiện có, không tạo thêm state. Chỉ dùng reducer cho phiên đăng nhập; biểu mẫu nhỏ dùng useState.
+
+- Mount hoặc URL đổi: `useRemote` tải dữ liệu trong useEffect.
+- URL đổi hoặc unmount: cleanup dùng AbortController hủy request cũ; không hiển thị dữ liệu của URL trước.
+- Biểu mẫu chỉ mount sau khi dữ liệu tải xong, khởi tạo state một lần. `key` theo ID giúp reset đúng khi đổi đối tượng; không cần effect chép dữ liệu server vào form.
+- Nhấn Lưu/Nộp/Chấm: gọi API trong event handler. `useAction` chặn gửi trùng và hủy request khi unmount; không chạy thao tác ghi dữ liệu trong effect.
+- Thành công: quay về danh sách hoặc tải lại dữ liệu từ server. Không tự sửa đồng thời nhiều bản sao state.
+- Tệp mới chỉ upload khi lưu; nếu lưu thất bại, thử xóa các tệp vừa upload còn chưa được sử dụng. Tệp đã lưu chỉ thay đổi sau khi backend chấp nhận biểu mẫu.
+
+Sinh viên có thể nộp lại trước hạn. Theo nghiệp vụ backend hiện có, nộp lại xóa điểm và nhận xét cũ để giáo viên chấm lại. Giới hạn 5 tệp, 25 MB/tệp và quyền truy cập đều được backend kiểm tra.
+
+Kiểm thử luồng React trên database tạm (cần Docker MongoDB `baomat-mongo`, OpenSSL và Chromium/Playwright):
+
+```bash
+python tests/learning_integration.py --dotnet /path/to/dotnet --dll /path/to/LMS.dll
+```
+
+Bộ kiểm thử chạy cả kiểm thử bảo mật sẵn có và trình duyệt. Nó kiểm tra nháp/công bố, upload/download, nộp bài chỉ có tệp, chấm điểm, nộp lại, hết hạn và các yêu cầu API giả mạo quyền/tệp.
+
+Kết quả kiểm tra bản bổ sung luồng học tập: build .NET 0 lỗi/0 cảnh báo, build TypeScript/Vite thành công, 11/11 ca Chromium và 29 nhóm hồi quy đạt. Có ca kiểm tra rời trang hủy request đang chờ rồi mở lại tải dữ liệu mới. Các kết quả này áp dụng cho code hiện có, không xác nhận các phân hệ chưa xây dựng.

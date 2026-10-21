@@ -133,11 +133,16 @@ public sealed record ApiLessonRequest
 }
 
 /// <summary>An assignment returned to an authorized class member.</summary>
-public sealed record ApiAssignmentResponse(string Id, string ClassId, string Title, string Description, DateTimeOffset DueDate, bool IsPublished, DateTimeOffset CreatedAt);
+public sealed record ApiFileResponse(string Id, string FileName, long Length);
+
+public sealed record ApiAssignmentResponse(string Id, string ClassId, string Title, string Description, DateTimeOffset DueDate, bool IsPublished, DateTimeOffset CreatedAt, IReadOnlyList<ApiFileResponse> Attachments);
 
 /// <summary>Fields required to create an assignment.</summary>
 public sealed record ApiAssignmentRequest
 {
+    [StringLength(1000)]
+    public string? UploadedFileIds { get; init; }
+
     [Required, StringLength(200, MinimumLength = 1)]
     public required string Title { get; init; }
 
@@ -150,13 +155,16 @@ public sealed record ApiAssignmentRequest
 }
 
 /// <summary>A student's submission without unrelated account data.</summary>
-public sealed record ApiSubmissionResponse(string Id, string AssignmentId, string StudentId, string Content, double? Grade, string TeacherComment, DateTimeOffset SubmittedAt, DateTimeOffset? GradedAt);
+public sealed record ApiSubmissionResponse(string Id, string AssignmentId, string StudentId, string Content, double? Grade, string TeacherComment, DateTimeOffset SubmittedAt, DateTimeOffset? GradedAt, IReadOnlyList<ApiFileResponse> Attachments, string? StudentName = null);
 
 /// <summary>Content submitted by a student.</summary>
 public sealed record ApiSubmissionRequest
 {
-    [Required, StringLength(20000, MinimumLength = 1)]
-    public required string Content { get; init; }
+    [StringLength(20000)]
+    public string Content { get; init; } = "";
+
+    [StringLength(1000)]
+    public string? UploadedFileIds { get; init; }
 }
 
 /// <summary>A grade and optional teacher feedback.</summary>

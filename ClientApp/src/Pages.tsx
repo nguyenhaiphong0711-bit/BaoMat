@@ -14,6 +14,8 @@ import type {
   Subject,
 } from "./types";
 
+import { ArchiveButton, Files } from "./LearningPages";
+
 function Heading({
   eyebrow,
   title,
@@ -613,7 +615,7 @@ export function ClassDetail() {
           <div className="section-heading">
             <h2>Bài học</h2>
             {user.role !== "Student" && can(user, "lessons.manage") && (
-              <a href={`/Lesson/Create?classId=${c.id}`}>+ Thêm bài học</a>
+              <Link to={`/classes/${c.id}/lessons/new`}>+ Thêm bài học</Link>
             )}
           </div>
           <RemoteError error={lessons.error} retry={lessons.reload} />
@@ -630,7 +632,14 @@ export function ClassDetail() {
                 </summary>
                 <p className="plain-content">{l.content}</p>
                 {user.role !== "Student" && can(user, "lessons.manage") && (
-                  <a href={`/Lesson/Edit/${l.id}`}>Chỉnh sửa bài học ↗</a>
+                  <div className="actions">
+                    <Link to={`/lessons/${l.id}/edit`}>Chỉnh sửa bài học</Link>
+                    <ArchiveButton
+                      kind="lessons"
+                      id={l.id}
+                      onArchived={lessons.reload}
+                    />
+                  </div>
                 )}
               </details>
             ))
@@ -644,7 +653,9 @@ export function ClassDetail() {
           <div className="section-heading">
             <h2>Bài tập</h2>
             {user.role !== "Student" && can(user, "assignments.manage") && (
-              <a href={`/Assignment/Create?classId=${c.id}`}>+ Thêm bài tập</a>
+              <Link to={`/classes/${c.id}/assignments/new`}>
+                + Thêm bài tập
+              </Link>
             )}
           </div>
           <RemoteError error={assignments.error} retry={assignments.reload} />
@@ -661,28 +672,34 @@ export function ClassDetail() {
                 </span>
                 <h3>{a.title}</h3>
                 <p className="plain-content">{a.description}</p>
+                <Files files={a.attachments} />
                 <small>
                   Hạn nộp: {new Date(a.dueDate).toLocaleString("vi-VN")}
                 </small>
                 <div className="actions">
                   {user.role === "Student" &&
                     can(user, "submissions.submit") && (
-                      <a
+                      <Link
                         className="button secondary"
-                        href={`/Submission/Submit?assignmentId=${a.id}`}
+                        to={`/assignments/${a.id}`}
                       >
-                        Bài nộp của tôi ↗
-                      </a>
+                        Bài nộp của tôi
+                      </Link>
                     )}
                   {user.role !== "Student" &&
                     can(user, "submissions.review") && (
-                      <a href={`/Submission/Index?assignmentId=${a.id}`}>
-                        Xem & chấm bài ↗
-                      </a>
+                      <Link to={`/assignments/${a.id}`}>Xem & chấm bài</Link>
                     )}
                   {user.role !== "Student" &&
                     can(user, "assignments.manage") && (
-                      <a href={`/Assignment/Edit/${a.id}`}>Chỉnh sửa ↗</a>
+                      <>
+                        <Link to={`/assignments/${a.id}/edit`}>Chỉnh sửa</Link>
+                        <ArchiveButton
+                          kind="assignments"
+                          id={a.id}
+                          onArchived={assignments.reload}
+                        />
+                      </>
                     )}
                 </div>
               </article>

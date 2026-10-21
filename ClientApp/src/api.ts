@@ -8,16 +8,20 @@ export class ApiError extends Error {
 }
 interface Options extends Omit<RequestInit, "body"> {
   body?: unknown;
+  responseType?: "json" | "text";
 }
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
-  const { body, ...request } = options;
+  const { body, responseType = "json", ...request } = options;
+  const isForm = body instanceof FormData;
   const headers = new Headers(request.headers);
-  if (body !== undefined) headers.set("Content-Type", "application/json");
+  if (body !== undefined && !isForm)
+    headers.set("Content-Type", "application/json");
   if (!["GET", "HEAD"].includes((request.method ?? "GET").toUpperCase())) {
     // Fetch per mutation so the token is bound to the current identity after login/logout.
     const token = await fetch("/api/frontend/csrf", {
       credentials: "same-origin",
       cache: "no-store",
+      signal: request.signal,
     });
     if (!token.ok)
       throw new ApiError(
@@ -32,7 +36,12 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     headers,
     credentials: "same-origin",
     cache: "no-store",
-    body: body === undefined ? undefined : JSON.stringify(body),
+    body:
+      body === undefined
+        ? undefined
+        : isForm
+          ? (body as FormData)
+          : JSON.stringify(body),
   });
   if (!response.ok) {
     if (response.status === 401 && path !== "/api/frontend/login")
@@ -57,7 +66,9 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   }
   return response.status === 204
     ? (undefined as T)
-    : (response.json() as Promise<T>);
+    : ((responseType === "text"
+        ? response.text()
+        : response.json()) as Promise<T>);
 }
 export const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Có lỗi xảy ra. Vui lòng thử lại.";

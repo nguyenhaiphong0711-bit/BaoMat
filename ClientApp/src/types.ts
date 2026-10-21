@@ -37,15 +37,36 @@ export interface ClassSummary {
   enrollmentCapacity: number;
 }
 export interface Lesson {
+  classId: string;
   id: string;
   title: string;
   content: string;
   isPublished: boolean;
 }
 export interface Assignment {
+  classId: string;
+  attachments: Attachment[];
   id: string;
   title: string;
   description: string;
   dueDate: string;
   isPublished: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  fileName: string;
+  length: number;
+}
+export interface Submission {
+  id: string;
+  assignmentId: string;
+  studentId: string;
+  studentName: string | null;
+  content: string;
+  attachments: Attachment[];
+  grade: number | null;
+  teacherComment: string;
+  submittedAt: string;
+  gradedAt: string | null;
 }

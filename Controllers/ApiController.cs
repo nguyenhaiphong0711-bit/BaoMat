@@ -16,6 +16,7 @@ namespace LMS.Controllers;
 [Authorize]
 public sealed class ApiController : ControllerBase
 {
+    private readonly FileStorageService _files;
     private readonly AuthService _auth;
     private readonly UserService _users;
     private readonly ClassService _classes;
@@ -29,6 +30,7 @@ public sealed class ApiController : ControllerBase
     private readonly AcademicService _academics;
 
     public ApiController(
+        FileStorageService files,
         AuthService auth,
         UserService users,
         ClassService classes,
@@ -41,6 +43,7 @@ public sealed class ApiController : ControllerBase
         ScheduleService schedules,
         AcademicService academics)
     {
+        _files = files;
         _auth = auth;
         _users = users;
         _classes = classes;
@@ -679,13 +682,15 @@ public sealed class ApiController : ControllerBase
         if (!await _classes.HasAccessAsync(classId, user))
             return Forbid();
 
+        var attachments = await ResolveAttachmentsAsync(request.UploadedFileIds, Array.Empty<StoredFileReference>(), user, classObjectId, "assignment-resource", null);
+        if (attachments is null) return InvalidAttachments();
         var assignment = await _assignments.CreateAsync(classObjectId, new AssignmentViewModel
         {
             Title = request.Title,
             Description = request.Description,
             DueDate = request.DueDate.UtcDateTime,
             IsPublished = request.IsPublished
-        });
+        }, attachments);
         var response = ToAssignmentResponse(assignment);
         return CreatedAtAction(nameof(GetAssignment), new { id = response.Id }, response);
     }
@@ -706,13 +711,17 @@ public sealed class ApiController : ControllerBase
         if (!await _classes.HasAccessAsync(assignment.ClassId.ToString(), user))
             return Forbid();
 
+        var attachments = await ResolveAttachmentsAsync(request.UploadedFileIds, assignment.Attachments, user, assignment.ClassId, "assignment-resource", null);
+        if (attachments is null) return InvalidAttachments();
+        var previousFiles = assignment.Attachments.ToArray();
         await _assignments.UpdateAsync(id, new AssignmentViewModel
         {
             Title = request.Title,
             Description = request.Description,
             DueDate = request.DueDate.UtcDateTime,
             IsPublished = request.IsPublished
-        });
+        }, attachments);
+        await DeleteRemovedFilesAsync(previousFiles, attachments);
         assignment = await _assignments.GetAsync(id);
         return assignment is null ? NotFound() : Ok(ToAssignmentResponse(assignment));
     }
@@ -749,7 +758,9 @@ public sealed class ApiController : ControllerBase
         if (!await _classes.HasAccessAsync(assignment.ClassId.ToString(), user))
             return Forbid();
 
-        return Ok((await _submissions.GetByAssignmentAsync(assignment.Id)).Select(ToSubmissionResponse));
+        var submissions = await _submissions.GetByAssignmentAsync(assignment.Id);
+        var students = (await _users.GetByIdsAsync(submissions.Select(x => x.StudentId).Distinct().ToArray())).ToDictionary(x => x.Id);
+        return Ok(submissions.Select(x => ToSubmissionResponse(x) with { StudentName = students.GetValueOrDefault(x.StudentId)?.FullName ?? "Sinh viên" }));
     }
 
     [HttpGet("assignments/{assignmentId}/submission")]
@@ -790,10 +801,16 @@ public sealed class ApiController : ControllerBase
         if (assignment.DueDate <= DateTime.UtcNow)
             return Conflict(new ProblemDetails { Status = 409, Title = "Hạn nộp bài đã qua.", Instance = HttpContext.Request.Path });
 
+        var existing = await _submissions.GetMineAsync(assignment.Id, user.Id);
+        var attachments = await ResolveAttachmentsAsync(request.UploadedFileIds, existing?.Attachments ?? new List<StoredFileReference>(), user, assignment.ClassId, "submission", assignment.Id);
+        if (attachments is null) return InvalidAttachments();
+        if (string.IsNullOrWhiteSpace(request.Content) && attachments.Count == 0)
+            return BadRequest(new ProblemDetails { Status = 400, Title = "Nhập câu trả lời hoặc tải lên ít nhất một tệp." });
         var submission = await _submissions.SubmitAsync(
             assignment.Id,
             user.Id,
-            new SubmissionViewModel { Content = request.Content });
+            new SubmissionViewModel { Content = request.Content }, attachments);
+        await DeleteRemovedFilesAsync(existing?.Attachments ?? new List<StoredFileReference>(), attachments);
         return Ok(ToSubmissionResponse(submission));
     }
 
@@ -994,6 +1011,32 @@ public sealed class ApiController : ControllerBase
             : BadRequest(new ProblemDetails { Status = 400, Title = "Buổi học không thể hủy.", Instance = HttpContext.Request.Path });
     }
 
+    // Omitted IDs preserve existing files for older API clients. Explicit IDs replace the selection.
+    private async Task<IReadOnlyList<StoredFileReference>?> ResolveAttachmentsAsync(
+        string? rawIds, IReadOnlyList<StoredFileReference> existing, User user,
+        ObjectId classId, string purpose, ObjectId? assignmentId)
+    {
+        if (rawIds is null) return existing;
+        var ids = FileStorageService.ParseIds(rawIds);
+        if (ids is null || ids.Count > FileStorageService.MaxFilesPerUpload) return null;
+        var retained = existing.Where(x => ids.Contains(x.Id)).ToArray();
+        var newIds = ids.Except(retained.Select(x => x.Id));
+        var staged = await _files.ValidateStagedFilesAsync(string.Join(",", newIds), user.Id, classId, purpose, assignmentId);
+        return staged is null ? null : retained.Concat(staged).ToArray();
+    }
+
+    private IActionResult InvalidAttachments() => BadRequest(new ProblemDetails
+    { Status = 400, Title = "Danh sách tệp không hợp lệ hoặc không được phép." });
+
+    private async Task DeleteRemovedFilesAsync(IEnumerable<StoredFileReference> previous, IReadOnlyList<StoredFileReference> current)
+    {
+        foreach (var file in previous.Where(x => current.All(y => y.Id != x.Id)))
+            await _files.DeleteIfUnreferencedAsync(file.Id);
+    }
+
+    private static IReadOnlyList<ApiFileResponse> ToFileResponses(IEnumerable<StoredFileReference> files) =>
+        files.Select(x => new ApiFileResponse(x.Id.ToString(), x.FileName, x.Length)).ToArray();
+
     private Task<User?> GetCurrentUserAsync() =>
         _users.GetAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "");
 
@@ -1021,12 +1064,12 @@ public sealed class ApiController : ControllerBase
 
     private static ApiAssignmentResponse ToAssignmentResponse(Assignment assignment) =>
         new(assignment.Id.ToString(), assignment.ClassId.ToString(), assignment.Title, assignment.Description,
-            AsUtcOffset(assignment.DueDate), assignment.IsPublished, AsUtcOffset(assignment.CreatedAt));
+            AsUtcOffset(assignment.DueDate), assignment.IsPublished, AsUtcOffset(assignment.CreatedAt), ToFileResponses(assignment.Attachments));
 
     private static ApiSubmissionResponse ToSubmissionResponse(Submission submission) =>
         new(submission.Id.ToString(), submission.AssignmentId.ToString(), submission.StudentId.ToString(),
             submission.Content, submission.Grade, submission.TeacherComment, AsUtcOffset(submission.SubmittedAt),
-            submission.GradedAt.HasValue ? AsUtcOffset(submission.GradedAt.Value) : null);
+            submission.GradedAt.HasValue ? AsUtcOffset(submission.GradedAt.Value) : null, ToFileResponses(submission.Attachments));
 
     private static DateTimeOffset AsUtcOffset(DateTime dateTime) =>
         new(DateTime.SpecifyKind(dateTime, DateTimeKind.Utc));

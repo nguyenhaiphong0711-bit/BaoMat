@@ -899,3 +899,27 @@ td small {
     transition: none !important;
   }
 }
+
+/* Native form grouping keeps the individual learning pages easy to follow. */
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+fieldset:disabled {
+  opacity: 0.75;
+}
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+label.check input {
+  width: auto;
+  margin: 0;
+}
+input[type="file"] {
+  padding: 0.8rem;
+}

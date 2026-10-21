@@ -14,6 +14,12 @@ import { Alert, Loading } from "./ui";
 import { Login, PasswordRecovery } from "./AuthPages";
 import { Dashboard, Classes, ClassDetail, Subjects } from "./Pages";
 
+import {
+  LessonEditor,
+  AssignmentEditor,
+  AssignmentWork,
+} from "./LearningPages";
+
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
   const location = useLocation();
@@ -152,6 +158,17 @@ export function App() {
         <Route path="subjects" element={<Subjects />} />
         <Route path="classes" element={<Classes />} />
         <Route path="classes/:id" element={<ClassDetail />} />
+        <Route path="classes/:classId/lessons/new" element={<LessonEditor />} />
+        <Route path="lessons/:lessonId/edit" element={<LessonEditor />} />
+        <Route
+          path="classes/:classId/assignments/new"
+          element={<AssignmentEditor />}
+        />
+        <Route
+          path="assignments/:assignmentId/edit"
+          element={<AssignmentEditor />}
+        />
+        <Route path="assignments/:assignmentId" element={<AssignmentWork />} />
         <Route
           path="*"
           element={
