@@ -5,7 +5,7 @@ using MongoDB.Driver;
 
 namespace LMS.Services;
 
-public sealed class QuizService(MongoContext db, UserService users)
+public sealed class QuizService(MongoContext db, UserService users, LearningEventService events)
 {
     public async Task<Quiz?> GetAsync(string id) => ObjectId.TryParse(id, out var key)
         ? await db.Quizzes.Find(x => x.Id == key).FirstOrDefaultAsync() : null;
@@ -166,9 +166,17 @@ public sealed class QuizService(MongoContext db, UserService users)
             Questions = quiz.QuestionIds.Select(id => { var q = byId[id]; return new QuizQuestionSnapshot
                 { SourceQuestionId = id, Content = q.Content, Options = q.Options, CorrectOption = q.CorrectOption, Explanation = q.Explanation }; }).ToList(),
             Answers = Enumerable.Repeat(-1, quiz.QuestionIds.Count).ToList() };
-        try { await db.QuizAttempts.InsertOneAsync(attempt); }
+        var created = false;
+        try { await db.QuizAttempts.InsertOneAsync(attempt); created = true; }
         catch (MongoWriteException error) when (error.WriteError?.Category == ServerErrorCategory.DuplicateKey)
         { attempt = await db.QuizAttempts.Find(x => x.QuizId == quiz.Id && x.StudentId == user.Id).FirstAsync(); }
+        if (created)
+        {
+            var classroom = await ClassAsync(quiz.ClassId);
+            var subject = classroom is null ? null : await db.Subjects.Find(x => x.Id == classroom.SubjectId).FirstOrDefaultAsync();
+            await events.RecordAsync("quiz.started", user, "Quiz", quiz.Id, "Đã bắt đầu bài kiểm tra " + quiz.Title,
+                user.Id, subject?.DepartmentId, quiz.ClassId);
+        }
         return await AttemptResponseAsync(user, quiz, attempt);
     }
 
@@ -200,6 +208,13 @@ public sealed class QuizService(MongoContext db, UserService users)
         attempt.Score = Math.Round(attempt.Questions.Select((q, i) => q.CorrectOption == attempt.Answers[i]).Count(x => x) * 10d / attempt.Questions.Count, 2);
         var result = await db.QuizAttempts.ReplaceOneAsync(x => x.Id == attempt.Id && x.SubmittedAt == null, attempt);
         if (result.MatchedCount == 0) attempt = await db.QuizAttempts.Find(x => x.Id == attempt.Id).FirstAsync();
+        else
+        {
+            var classroom = await ClassAsync(quiz.ClassId);
+            var subject = classroom is null ? null : await db.Subjects.Find(x => x.Id == classroom.SubjectId).FirstOrDefaultAsync();
+            await events.RecordAsync("quiz.submitted", user, "Quiz", quiz.Id, "Đã nộp bài kiểm tra " + quiz.Title,
+                user.Id, subject?.DepartmentId, quiz.ClassId);
+        }
         return await AttemptResponseAsync(user, quiz, attempt);
     }
 

@@ -14,6 +14,7 @@ public static class PermissionCodes
     public const string SupportView = "support.view";
     public const string SupportCreate = "support.create";
     public const string SupportManage = "support.manage";
+    public const string ReportsView = "reports.view";
     public const string StaffStudentsView = "staff.students.view";
     public const string StaffProgressView = "staff.progress.view";
     public const string ClaimType = "lms:permission";
@@ -50,6 +51,7 @@ public static class PermissionCodes
         (SupportView, "Xem yêu cầu hỗ trợ", "Hỗ trợ người học", "Xem yêu cầu của bản thân hoặc yêu cầu thuộc khoa được giao."),
         (SupportCreate, "Gửi yêu cầu hỗ trợ", "Hỗ trợ người học", "Sinh viên tạo yêu cầu và tiếp tục trao đổi với bộ phận hỗ trợ."),
         (SupportManage, "Xử lý yêu cầu hỗ trợ", "Hỗ trợ người học", "Cán bộ tiếp nhận, trao đổi và cập nhật trạng thái yêu cầu trong khoa."),
+        (ReportsView, "Xem báo cáo học tập", "Báo cáo", "Xem số liệu tổng hợp trong phạm vi vai trò, lớp học hoặc khoa được giao."),
         (StaffStudentsView, "Xem sinh viên trong khoa", "Cán bộ quản lý", "Xem hồ sơ cơ bản của sinh viên thuộc khoa được Admin phân công."),
         (StaffProgressView, "Theo dõi học tập trong khoa", "Cán bộ quản lý", "Xem số bài nộp và điểm trung bình bài tập của sinh viên trong các lớp thuộc khoa được giao."),
         (LessonsView, "Xem bài học", "Bài học", "Sinh viên xem bài đã công bố; giáo viên xem cả bản nháp trong lớp được phân công."),
@@ -105,16 +107,16 @@ public static class PermissionCodes
 
     public static IReadOnlyList<string> DefaultsForRole(string role) => role switch
     {
-        Roles.Staff => [StaffStudentsView, StaffProgressView, ResourcesView, ResourcesReview, QuestionsView, QuestionsReview, SupportView, SupportManage],
+        Roles.Staff => [StaffStudentsView, StaffProgressView, ResourcesView, ResourcesReview, QuestionsView, QuestionsReview, SupportView, SupportManage, ReportsView],
         Roles.Teacher =>
         [
-            ResourcesView, ResourcesManage, QuestionsView, QuestionsManage, QuizzesView, QuizzesManage, LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
+            ResourcesView, ResourcesManage, QuestionsView, QuestionsManage, QuizzesView, QuizzesManage, ReportsView, LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
             SubmissionsReview, ScheduleView, ScheduleAvailability, ScheduleManage,
             ClassesView
         ],
         Roles.Student =>
         [
-            ResourcesView, QuizzesView, QuizzesAttempt, SupportView, SupportCreate, LessonsView, AssignmentsView, SubmissionsSubmit, ScheduleView,
+            ResourcesView, QuizzesView, QuizzesAttempt, SupportView, SupportCreate, ReportsView, LessonsView, AssignmentsView, SubmissionsSubmit, ScheduleView,
             ScheduleEnroll, CourseRegistrationView, CourseRegistrationManage,
             StudentProgressView, TuitionView, TuitionPay,
             ClassesView

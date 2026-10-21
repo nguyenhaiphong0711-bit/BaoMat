@@ -923,3 +923,17 @@ label.check input {
 input[type="file"] {
   padding: 0.8rem;
 }
+.report-track {
+  height: 0.55rem;
+  margin: 0.35rem 0 1rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8edf8;
+}
+.report-track span {
+  display: block;
+  min-width: 0.2rem;
+  height: 100%;
+  border-radius: inherit;
+  background: #315bd6;
+}

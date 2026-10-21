@@ -255,3 +255,9 @@ export interface SupportPage {
   page: number;
   pageSize: number;
 }
+export interface LearningReport {
+  scopeName: string;
+  metrics: { key: string; label: string; value: number; unit: string }[];
+  supportStatuses: { key: string; label: string; value: number }[];
+  recentEvents: { type: string; summary: string; occurredAt: string }[];
+}

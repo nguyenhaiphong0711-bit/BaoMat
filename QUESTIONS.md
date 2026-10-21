@@ -12,6 +12,6 @@ Ba quyền mới là:
 
 Sinh viên bị chặn ở cả route API và giao diện để đáp án đúng không bị lộ. Câu hỏi nháp chỉ người sở hữu/Admin thấy; cán bộ chỉ thấy câu đã gửi trong khoa; giáo viên khác chỉ thấy câu đã công bố thuộc môn mình được phân công. Tất cả thao tác ghi đều kiểm tra CSRF và `Revision` để từ chối cập nhật từ màn hình đã cũ.
 
-Sau khi pull, chạy `dotnet run`; hệ thống tự thêm định nghĩa quyền. Với tài khoản đã tồn tại, Admin cần vào **Phân quyền** để cấp `questions.view` + `questions.manage` cho giáo viên và `questions.view` + `questions.review` cho cán bộ phù hợp. Hệ thống không tự cấp lại quyền đã bị thu hồi. Toàn hệ thống hiện có 30 quyền.
+Sau khi pull, chạy `dotnet run`; hệ thống tự thêm định nghĩa quyền. Với tài khoản đã tồn tại, Admin cần vào **Phân quyền** để cấp `questions.view` + `questions.manage` cho giáo viên và `questions.view` + `questions.review` cho cán bộ phù hợp. Hệ thống không tự cấp lại quyền đã bị thu hồi. Toàn hệ thống hiện có 31 quyền.
 
 Phiên bản này là ngân hàng câu hỏi thủ công có kiểm duyệt. Chưa có đề thi, lần làm bài, chấm điểm tự động, nhập hàng loạt hoặc sinh câu hỏi bằng AI. Phần AI sẽ chỉ tạo bản nháp và vẫn phải qua người duyệt khi được bổ sung ở giai đoạn sau.

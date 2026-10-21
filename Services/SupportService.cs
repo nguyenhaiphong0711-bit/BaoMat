@@ -5,7 +5,7 @@ using MongoDB.Driver;
 
 namespace LMS.Services;
 
-public sealed class SupportService(MongoContext db, UserService users)
+public sealed class SupportService(MongoContext db, UserService users, LearningEventService events)
 {
     public async Task<SupportTicket?> GetAsync(string id) => ObjectId.TryParse(id, out var key)
         ? await db.SupportTickets.Find(x => x.Id == key).FirstOrDefaultAsync() : null;
@@ -75,7 +75,10 @@ public sealed class SupportService(MongoContext db, UserService users)
         var ticket = new SupportTicket { StudentId = student.Id, DepartmentId = departmentId,
             Subject = request.Subject.Trim(), Category = request.Category.Trim(), Priority = request.Priority };
         ticket.Messages.Add(Message(student, request.Content));
-        await db.SupportTickets.InsertOneAsync(ticket); return ticket;
+        await db.SupportTickets.InsertOneAsync(ticket);
+        await events.RecordAsync("support.created", student, "SupportTicket", ticket.Id,
+            "Đã tạo yêu cầu hỗ trợ", student.Id, departmentId);
+        return ticket;
     }
 
     public async Task<bool> AddMessageAsync(User user, SupportTicket ticket, SupportMessageRequest request)
@@ -92,7 +95,10 @@ public sealed class SupportService(MongoContext db, UserService users)
         if (user.Role == Roles.Student && ticket.Status == TicketStatuses.Resolved)
         { ticket.Status = TicketStatuses.Open; ticket.ResolvedAt = null; }
         ticket.UpdatedAt = DateTime.UtcNow;
-        return await SaveAsync(ticket, request.Revision);
+        var saved = await SaveAsync(ticket, request.Revision);
+        if (saved) await events.RecordAsync("support.replied", user, "SupportTicket", ticket.Id,
+            "Đã cập nhật hội thoại hỗ trợ", ticket.StudentId, ticket.DepartmentId);
+        return saved;
     }
 
     public async Task<bool> ManageAsync(User user, SupportTicket ticket, SupportManageRequest request)
@@ -115,7 +121,10 @@ public sealed class SupportService(MongoContext db, UserService users)
         ticket.AssignedStaffId = assigned; ticket.Status = request.Status;
         ticket.ResolvedAt = request.Status == TicketStatuses.Resolved ? DateTime.UtcNow : null;
         ticket.UpdatedAt = DateTime.UtcNow;
-        return await SaveAsync(ticket, request.Revision);
+        var saved = await SaveAsync(ticket, request.Revision);
+        if (saved) await events.RecordAsync("support.status", user, "SupportTicket", ticket.Id,
+            "Yêu cầu hỗ trợ chuyển sang " + request.Status, ticket.StudentId, ticket.DepartmentId);
+        return saved;
     }
 
     private static SupportMessage Message(User user, string content) => new()

@@ -34,6 +34,8 @@ builder.Services.AddScoped<ResourceService>();
 builder.Services.AddScoped<QuestionBankService>();
 builder.Services.AddScoped<QuizService>();
 builder.Services.AddScoped<SupportService>();
+builder.Services.AddScoped<LearningEventService>();
+builder.Services.AddScoped<LearningReportService>();
 builder.Services.AddScoped<VnpayPaymentService>();
 builder.Services.AddScoped<GmailEmailSender>();
 builder.Services.AddScoped<PasswordResetService>();

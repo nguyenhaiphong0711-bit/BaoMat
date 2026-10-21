@@ -2,7 +2,7 @@
 
 ## Bắt đầu sử dụng
 
-Chạy như trước bằng `dotnet run`. Ứng dụng hiện có 30 quyền hệ thống sau khi bổ sung các mô-đun học liệu, câu hỏi, bài kiểm tra và hỗ trợ.
+Chạy như trước bằng `dotnet run`. Ứng dụng hiện có 31 quyền hệ thống sau khi bổ sung báo cáo theo vai trò.
 
 Với tài khoản đã tồn tại, Admin vào **Phân quyền / hồ sơ** và chọn các quyền cần thiết:
 
