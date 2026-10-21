@@ -8,6 +8,9 @@ public static class PermissionCodes
     public const string QuestionsView = "questions.view";
     public const string QuestionsManage = "questions.manage";
     public const string QuestionsReview = "questions.review";
+    public const string QuizzesView = "quizzes.view";
+    public const string QuizzesManage = "quizzes.manage";
+    public const string QuizzesAttempt = "quizzes.attempt";
     public const string StaffStudentsView = "staff.students.view";
     public const string StaffProgressView = "staff.progress.view";
     public const string ClaimType = "lms:permission";
@@ -38,6 +41,9 @@ public static class PermissionCodes
         (QuestionsView, "Xem ngân hàng câu hỏi", "Ngân hàng câu hỏi", "Xem câu hỏi thuộc môn được phân công hoặc khoa được giao."),
         (QuestionsManage, "Soạn câu hỏi", "Ngân hàng câu hỏi", "Soạn và công bố câu hỏi trắc nghiệm trong môn được phân công."),
         (QuestionsReview, "Duyệt câu hỏi trong khoa", "Ngân hàng câu hỏi", "Duyệt câu hỏi thuộc khoa được giao; không tự duyệt câu hỏi do mình soạn."),
+        (QuizzesView, "Xem bài kiểm tra", "Bài kiểm tra", "Xem bài kiểm tra trong lớp được phân công hoặc tham gia."),
+        (QuizzesManage, "Quản lý bài kiểm tra", "Bài kiểm tra", "Tạo bài kiểm tra từ câu hỏi đã công bố và xem kết quả của lớp được phụ trách."),
+        (QuizzesAttempt, "Làm bài kiểm tra", "Bài kiểm tra", "Bắt đầu và nộp một lượt làm bài trong lớp đang tham gia."),
         (StaffStudentsView, "Xem sinh viên trong khoa", "Cán bộ quản lý", "Xem hồ sơ cơ bản của sinh viên thuộc khoa được Admin phân công."),
         (StaffProgressView, "Theo dõi học tập trong khoa", "Cán bộ quản lý", "Xem số bài nộp và điểm trung bình bài tập của sinh viên trong các lớp thuộc khoa được giao."),
         (LessonsView, "Xem bài học", "Bài học", "Sinh viên xem bài đã công bố; giáo viên xem cả bản nháp trong lớp được phân công."),
@@ -62,6 +68,7 @@ public static class PermissionCodes
     {
         ResourcesManage or ResourcesReview => [ResourcesView],
         QuestionsManage or QuestionsReview => [QuestionsView],
+        QuizzesManage or QuizzesAttempt => [QuizzesView],
         StaffProgressView => [StaffStudentsView],
         LessonsView or AssignmentsView => [ClassesView],
         LessonsManage => [LessonsView],
@@ -94,13 +101,13 @@ public static class PermissionCodes
         Roles.Staff => [StaffStudentsView, StaffProgressView, ResourcesView, ResourcesReview, QuestionsView, QuestionsReview],
         Roles.Teacher =>
         [
-            ResourcesView, ResourcesManage, QuestionsView, QuestionsManage, LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
+            ResourcesView, ResourcesManage, QuestionsView, QuestionsManage, QuizzesView, QuizzesManage, LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
             SubmissionsReview, ScheduleView, ScheduleAvailability, ScheduleManage,
             ClassesView
         ],
         Roles.Student =>
         [
-            ResourcesView, LessonsView, AssignmentsView, SubmissionsSubmit, ScheduleView,
+            ResourcesView, QuizzesView, QuizzesAttempt, LessonsView, AssignmentsView, SubmissionsSubmit, ScheduleView,
             ScheduleEnroll, CourseRegistrationView, CourseRegistrationManage,
             StudentProgressView, TuitionView, TuitionPay,
             ClassesView

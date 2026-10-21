@@ -29,6 +29,7 @@ import { roleLabel } from "./types";
 
 import { Resources, ResourceDetail, ResourceEditor } from "./ResourcePages";
 import { Questions, QuestionDetail, QuestionEditor } from "./QuestionPages";
+import { Quizzes, QuizDetail, QuizEditor, QuizAttemptPage } from "./QuizPages";
 
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
@@ -99,6 +100,9 @@ function Workspace() {
           )}
           {user.role !== "Student" && can(user, "questions.view") && (
             <NavLink to="/questions">Ngân hàng câu hỏi</NavLink>
+          )}
+          {user.role !== "Staff" && can(user, "quizzes.view") && (
+            <NavLink to="/quizzes">Bài kiểm tra</NavLink>
           )}
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
@@ -181,6 +185,14 @@ export function App() {
         <Route path="questions/new" element={<QuestionEditor />} />
         <Route path="questions/:questionId" element={<QuestionDetail />} />
         <Route path="questions/:questionId/edit" element={<QuestionEditor />} />
+        <Route path="quizzes" element={<Quizzes />} />
+        <Route path="quizzes/new" element={<QuizEditor />} />
+        <Route path="quizzes/:quizId" element={<QuizDetail />} />
+        <Route path="quizzes/:quizId/edit" element={<QuizEditor />} />
+        <Route
+          path="quizzes/attempts/:attemptId"
+          element={<QuizAttemptPage />}
+        />
         <Route
           path="resources/:resourceId/versions/:version"
           element={<ResourceDetail />}

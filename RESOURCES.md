@@ -2,7 +2,7 @@
 
 ## Bắt đầu sử dụng
 
-Chạy như trước bằng `dotnet run`. Ứng dụng hiện có 24 quyền hệ thống sau khi bổ sung quyền cho ngân hàng câu hỏi.
+Chạy như trước bằng `dotnet run`. Ứng dụng hiện có 27 quyền hệ thống sau khi bổ sung ngân hàng câu hỏi và bài kiểm tra.
 
 Với tài khoản đã tồn tại, Admin vào **Phân quyền / hồ sơ** và chọn các quyền cần thiết:
 

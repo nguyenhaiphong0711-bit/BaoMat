@@ -34,6 +34,8 @@ public class MongoContext
     public IMongoCollection<SessionEnrollment> SessionEnrollments => _database.GetCollection<SessionEnrollment>("SessionEnrollments");
     public IMongoCollection<LearningResource> Resources => _database.GetCollection<LearningResource>("Resources");
     public IMongoCollection<QuestionBankItem> Questions => _database.GetCollection<QuestionBankItem>("Questions");
+    public IMongoCollection<Quiz> Quizzes => _database.GetCollection<Quiz>("Quizzes");
+    public IMongoCollection<QuizAttempt> QuizAttempts => _database.GetCollection<QuizAttempt>("QuizAttempts");
     public IMongoCollection<PermissionMigration> PermissionMigrations => _database.GetCollection<PermissionMigration>("PermissionMigrations");
     public IMongoCollection<Permission> Permissions => _database.GetCollection<Permission>("Permissions");
     public IMongoCollection<AcademicProgram> AcademicPrograms => _database.GetCollection<AcademicProgram>("AcademicPrograms");
@@ -70,6 +72,9 @@ public class MongoContext
             Builders<SessionEnrollment>.IndexKeys
                 .Ascending(x => x.SessionId)
                 .Ascending(x => x.StudentId),
+            new CreateIndexOptions { Unique = true }));
+        QuizAttempts.Indexes.CreateOne(new CreateIndexModel<QuizAttempt>(
+            Builders<QuizAttempt>.IndexKeys.Ascending(x => x.QuizId).Ascending(x => x.StudentId),
             new CreateIndexOptions { Unique = true }));
         Permissions.Indexes.CreateOne(new CreateIndexModel<Permission>(
             Builders<Permission>.IndexKeys.Ascending(x => x.Code),

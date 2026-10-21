@@ -173,3 +173,56 @@ export interface QuestionPage {
   page: number;
   pageSize: number;
 }
+export interface QuizSummary {
+  id: string;
+  revision: number;
+  classId: string;
+  className: string;
+  title: string;
+  durationMinutes: number;
+  opensAt: string;
+  closesAt: string;
+  questionCount: number;
+  isPublished: boolean;
+  isArchived: boolean;
+  attemptStatus: "NotStarted" | "InProgress" | "Submitted";
+  score: number | null;
+}
+export interface QuizManage {
+  quiz: QuizSummary;
+  instructions: string;
+  questions: QuestionItem[];
+  canEdit: boolean;
+  canPublish: boolean;
+  canArchive: boolean;
+  attempts: {
+    studentId: string;
+    studentName: string;
+    startedAt: string;
+    submittedAt: string | null;
+    score: number | null;
+  }[];
+}
+export interface QuizStudentDetail {
+  quiz: QuizSummary;
+  instructions: string;
+  canStart: boolean;
+  attemptId: string | null;
+}
+export interface QuizAttempt {
+  id: string;
+  quizId: string;
+  title: string;
+  instructions: string;
+  startedAt: string;
+  expiresAt: string;
+  submittedAt: string | null;
+  score: number | null;
+  questions: {
+    content: string;
+    options: { id: string; text: string }[];
+    correctOption: number | null;
+    explanation: string;
+  }[];
+  answers: number[];
+}
