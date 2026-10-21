@@ -640,22 +640,26 @@ public class LessonService
         return await _db.Lessons.Find(x => x.Id == oid).FirstOrDefaultAsync();
     }
 
-    public async Task<Lesson> CreateAsync(ObjectId classId, LessonViewModel vm)
+    public async Task<Lesson> CreateAsync(ObjectId classId, LessonViewModel vm, IReadOnlyList<StoredFileReference>? attachments = null)
     {
-        var lesson = new Lesson { ClassId = classId, Title = vm.Title, Content = vm.Content, IsPublished = vm.IsPublished };
+        var lesson = new Lesson { ClassId = classId, Title = vm.Title, Content = vm.Content, IsPublished = vm.IsPublished, Attachments = attachments?.ToList() ?? new() };
         await _db.Lessons.InsertOneAsync(lesson);
         return lesson;
     }
 
-    public async Task UpdateAsync(string id, LessonViewModel vm)
+    public async Task UpdateAsync(string id, LessonViewModel vm, IReadOnlyList<StoredFileReference>? attachments = null)
     {
         var lesson = await GetAsync(id);
         if (lesson is null) return;
         lesson.Title = vm.Title;
         lesson.Content = vm.Content;
         lesson.IsPublished = vm.IsPublished;
+        if (attachments is not null) lesson.Attachments = attachments.ToList();
         await _db.Lessons.ReplaceOneAsync(x => x.Id == lesson.Id, lesson);
     }
+
+    public async Task<Lesson?> GetByAttachmentAsync(ObjectId fileId) =>
+        await _db.Lessons.Find(x => x.Attachments.Any(file => file.Id == fileId)).FirstOrDefaultAsync();
 
     public async Task<bool> ArchiveAsync(string id)
     {

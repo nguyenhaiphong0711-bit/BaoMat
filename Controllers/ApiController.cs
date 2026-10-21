@@ -576,12 +576,14 @@ public sealed class ApiController : ControllerBase
         if (!await _classes.HasAccessAsync(classId, user))
             return Forbid();
 
+        var attachments = await ResolveAttachmentsAsync(request.UploadedFileIds, Array.Empty<StoredFileReference>(), user, classObjectId, "lesson-resource", null);
+        if (attachments is null) return InvalidAttachments();
         var lesson = await _lessons.CreateAsync(classObjectId, new LessonViewModel
         {
             Title = request.Title,
             Content = request.Content,
             IsPublished = request.IsPublished
-        });
+        }, attachments);
         var response = ToLessonResponse(lesson);
         return CreatedAtAction(nameof(GetLesson), new { id = response.Id }, response);
     }
@@ -602,12 +604,16 @@ public sealed class ApiController : ControllerBase
         if (!await _classes.HasAccessAsync(lesson.ClassId.ToString(), user))
             return Forbid();
 
+        var attachments = await ResolveAttachmentsAsync(request.UploadedFileIds, lesson.Attachments, user, lesson.ClassId, "lesson-resource", null);
+        if (attachments is null) return InvalidAttachments();
+        var previousFiles = lesson.Attachments.ToArray();
         await _lessons.UpdateAsync(id, new LessonViewModel
         {
             Title = request.Title,
             Content = request.Content,
             IsPublished = request.IsPublished
-        });
+        }, attachments);
+        await DeleteRemovedFilesAsync(previousFiles, attachments);
         lesson = await _lessons.GetAsync(id);
         return lesson is null ? NotFound() : Ok(ToLessonResponse(lesson));
     }
@@ -1060,7 +1066,7 @@ public sealed class ApiController : ControllerBase
         new(department.Id.ToString(), department.Code, department.Name, department.Description, AsUtcOffset(department.CreatedAt));
 
     private static ApiLessonResponse ToLessonResponse(Lesson lesson) =>
-        new(lesson.Id.ToString(), lesson.ClassId.ToString(), lesson.Title, lesson.Content, lesson.IsPublished, AsUtcOffset(lesson.CreatedAt));
+        new(lesson.Id.ToString(), lesson.ClassId.ToString(), lesson.Title, lesson.Content, lesson.IsPublished, AsUtcOffset(lesson.CreatedAt), ToFileResponses(lesson.Attachments));
 
     private static ApiAssignmentResponse ToAssignmentResponse(Assignment assignment) =>
         new(assignment.Id.ToString(), assignment.ClassId.ToString(), assignment.Title, assignment.Description,

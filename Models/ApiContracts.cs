@@ -118,11 +118,14 @@ public sealed record ApiTeachingAssignmentRequest
 }
 
 /// <summary>A lesson returned to an authorized class member.</summary>
-public sealed record ApiLessonResponse(string Id, string ClassId, string Title, string Content, bool IsPublished, DateTimeOffset CreatedAt);
+public sealed record ApiLessonResponse(string Id, string ClassId, string Title, string Content, bool IsPublished, DateTimeOffset CreatedAt, IReadOnlyList<ApiFileResponse> Attachments);
 
 /// <summary>Fields required to create or update a lesson.</summary>
 public sealed record ApiLessonRequest
 {
+    [StringLength(1000)]
+    public string? UploadedFileIds { get; init; }
+
     [Required, StringLength(200, MinimumLength = 1)]
     public required string Title { get; init; }
 

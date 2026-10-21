@@ -120,7 +120,8 @@ public class FileStorageService
 
     public async Task DeleteIfUnreferencedAsync(ObjectId id)
     {
-        if (await _db.Assignments.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync() ||
+        if (await _db.Lessons.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync() ||
+            await _db.Assignments.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync() ||
             await _db.Submissions.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync())
         {
             return;

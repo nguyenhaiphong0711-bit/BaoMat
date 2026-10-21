@@ -43,6 +43,15 @@ else
             <article class="card lesson-card">
                 <div class="title-row"><h3>@x.Title</h3><span class="badge @(x.IsPublished ? "badge-open" : "badge-muted")">@(x.IsPublished ? "Đã xuất bản" : "Bản nháp")</span></div>
                 <p>@x.Content</p>
+                @if (x.Attachments.Count > 0)
+                {
+                    <ul>
+                        @foreach (var file in x.Attachments)
+                        {
+                            <li><a asp-controller="File" asp-action="Download" asp-route-id="@file.Id">@file.FileName</a></li>
+                        }
+                    </ul>
+                }
                 @if (User.IsInRole(Roles.Admin) || User.HasClaim(LMS.Models.PermissionCodes.ClaimType, LMS.Models.PermissionCodes.LessonsManage))
                 {
                     <div class="action-row">

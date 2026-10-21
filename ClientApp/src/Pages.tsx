@@ -631,6 +631,7 @@ export function ClassDetail() {
                   {!l.isPublished && <span className="badge">Nháp</span>}
                 </summary>
                 <p className="plain-content">{l.content}</p>
+                <Files files={l.attachments} />
                 {user.role !== "Student" && can(user, "lessons.manage") && (
                   <div className="actions">
                     <Link to={`/lessons/${l.id}/edit`}>Chỉnh sửa bài học</Link>

@@ -12,6 +12,7 @@ namespace LMS.Controllers;
 [Authorize]
 public class FileController : Controller
 {
+    private readonly LessonService _lessons;
     private readonly FileStorageService _files;
     private readonly AssignmentService _assignments;
     private readonly SubmissionService _submissions;
@@ -19,12 +20,14 @@ public class FileController : Controller
     private readonly UserService _users;
 
     public FileController(
+        LessonService lessons,
         FileStorageService files,
         AssignmentService assignments,
         SubmissionService submissions,
         ClassService classes,
         UserService users)
     {
+        _lessons = lessons;
         _files = files;
         _assignments = assignments;
         _submissions = submissions;
@@ -44,7 +47,15 @@ public class FileController : Controller
             return NotFound();
 
         var assignment = await _assignments.GetByAttachmentAsync(fileId);
-        if (assignment is not null)
+        var lesson = await _lessons.GetByAttachmentAsync(fileId);
+        if (lesson is not null)
+        {
+            if (!await _users.HasPermissionAsync(user.Id, PermissionCodes.LessonsView) ||
+                !await _classes.HasAccessAsync(lesson.ClassId.ToString(), user) ||
+                (user.Role == Roles.Student && (!lesson.IsPublished || lesson.IsArchived)))
+                return Forbid();
+        }
+        else if (assignment is not null)
         {
             var requiredPermission = assignment.Attachments.Any(file => file.Id == fileId)
                 ? PermissionCodes.AssignmentsView

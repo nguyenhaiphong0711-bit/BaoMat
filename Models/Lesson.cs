@@ -9,6 +9,7 @@ public class Lesson
     public ObjectId ClassId { get; set; }
     public string Title { get; set; } = "";
     public string Content { get; set; } = "";
+    public List<StoredFileReference> Attachments { get; set; } = new();
     public bool IsPublished { get; set; }
     public bool IsArchived { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

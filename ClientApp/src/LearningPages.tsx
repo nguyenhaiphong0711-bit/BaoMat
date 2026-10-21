@@ -147,6 +147,8 @@ function LessonForm({
 }) {
   const navigate = useNavigate();
   const action = useAction();
+  const [files, setFiles] = useState<File[]>([]);
+  const [existing, setExisting] = useState(lesson?.attachments ?? []);
   const [form, setForm] = useState({
     title: lesson?.title ?? "",
     content: lesson?.content ?? "",
@@ -156,15 +158,16 @@ function LessonForm({
     e.preventDefault();
     void action.run(
       (signal) =>
-        api<Lesson>(
+        saveWithFiles<Lesson>(
           lesson
             ? `/api/lessons/${lesson.id}`
             : `/api/classes/${classId}/lessons`,
-          {
-            method: lesson ? "PUT" : "POST",
-            body: form,
-            signal,
-          },
+          lesson ? "PUT" : "POST",
+          form,
+          `/Upload/LessonAttachment?classId=${classId}`,
+          existing,
+          files,
+          signal,
         ),
       () => navigate(`/classes/${classId}`),
     );
@@ -194,6 +197,23 @@ function LessonForm({
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
             />
+            <FileInput
+              existing={existing}
+              selected={files}
+              onSelect={setFiles}
+            />
+            {existing.map((file) => (
+              <button
+                key={file.id}
+                type="button"
+                className="button text danger"
+                onClick={() =>
+                  setExisting(existing.filter((f) => f.id !== file.id))
+                }
+              >
+                Bỏ tệp {file.fileName}
+              </button>
+            ))}
             <label className="check">
               <input
                 type="checkbox"

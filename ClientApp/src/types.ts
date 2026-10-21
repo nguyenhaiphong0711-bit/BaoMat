@@ -37,6 +37,7 @@ export interface ClassSummary {
   enrollmentCapacity: number;
 }
 export interface Lesson {
+  attachments: Attachment[];
   classId: string;
   id: string;
   title: string;

@@ -50,6 +50,11 @@ test("React learning lifecycle: draft, publish, files, submit, grade, resubmit a
     await teacher
       .getByLabel("Nội dung bài học")
       .fill("Nội dung nháp <script>alert(1)</script>");
+    await teacher.getByLabel(/Thêm tệp đính kèm/).setInputFiles({
+      name: "lesson-notes.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("Lesson notes"),
+    });
     const createdLesson = teacher.waitForResponse(
       (r) => r.request().method() === "POST" && r.url().endsWith("/lessons"),
     );
@@ -57,6 +62,8 @@ test("React learning lifecycle: draft, publish, files, submit, grade, resubmit a
       .getByRole("button", { name: "Lưu bài học", exact: true })
       .click();
     const lesson = await (await createdLesson).json();
+    expect(lesson.attachments).toHaveLength(1);
+    const lessonFile = `/File/Download/${lesson.attachments[0].id}`;
     await expect(
       teacher.getByText("React lifecycle lesson", { exact: false }),
     ).toBeVisible();
@@ -68,11 +75,25 @@ test("React learning lifecycle: draft, publish, files, submit, grade, resubmit a
     expect(
       (await student.request.get(`/api/lessons/${lesson.id}`)).status(),
     ).toBe(403);
+    expect(
+      (await student.request.get(lessonFile, { maxRedirects: 0 })).status(),
+    ).toBe(302);
+    expect(
+      (
+        await student.request.post(
+          `/Upload/LessonAttachment?classId=${process.env.E2E_CLASS_ID}`,
+          { maxRedirects: 0 },
+        )
+      ).status(),
+    ).toBe(302);
     await teacher.getByText("React lifecycle lesson", { exact: false }).click();
     await teacher
       .getByRole("link", { name: "Chỉnh sửa bài học", exact: true })
       .last()
       .click();
+    await expect(
+      teacher.getByRole("link", { name: "lesson-notes.txt" }),
+    ).toBeVisible();
     await teacher.getByLabel("Công bố cho sinh viên").check();
     await teacher
       .getByRole("button", { name: "Lưu bài học", exact: true })
@@ -85,6 +106,28 @@ test("React learning lifecycle: draft, publish, files, submit, grade, resubmit a
         exact: true,
       }),
     ).toBeVisible();
+
+    await expect(
+      student.getByRole("link", { name: "lesson-notes.txt" }),
+    ).toBeVisible();
+    expect((await student.request.get(lessonFile)).status()).toBe(200);
+    expect(
+      (
+        await write(teacher, `/api/lessons/${lesson.id}`, "PUT", {
+          title: lesson.title,
+          content: lesson.content,
+          isPublished: true,
+        })
+      ).status(),
+    ).toBe(200);
+    expect((await teacher.request.get(lessonFile)).status()).toBe(200);
+    // Reverting a staged upload must never delete a file that a lesson already references.
+    const csrf = await (await teacher.request.get("/api/frontend/csrf")).json();
+    await teacher.request.delete("/Upload/Revert", {
+      data: lesson.attachments[0].id,
+      headers: { RequestVerificationToken: csrf.requestToken },
+    });
+    expect((await teacher.request.get(lessonFile)).status()).toBe(200);
 
     await teacher
       .getByRole("link", { name: "+ Thêm bài tập", exact: true })
@@ -254,6 +297,63 @@ test("React learning lifecycle: draft, publish, files, submit, grade, resubmit a
     expect(
       (await student.request.get(`/api/assignments/${assignment.id}`)).status(),
     ).toBe(403);
+    expect(
+      (
+        await write(teacher, `/api/lessons/${lesson.id}`, "PUT", {
+          title: lesson.title,
+          content: lesson.content,
+          isPublished: true,
+          uploadedFileIds: assignment.attachments[0].id,
+        })
+      ).status(),
+    ).toBe(400);
+    const copy = await (
+      await write(
+        teacher,
+        `/api/classes/${process.env.E2E_CLASS_ID}/lessons`,
+        "POST",
+        {
+          title: "Attachment removal",
+          content: "Keep shared physical file safe",
+          isPublished: false,
+          uploadedFileIds: lesson.attachments[0].id,
+        },
+      )
+    ).json();
+    expect(
+      (
+        await write(teacher, `/api/lessons/${copy.id}`, "PUT", {
+          title: copy.title,
+          content: copy.content,
+          isPublished: false,
+          uploadedFileIds: "",
+        })
+      ).status(),
+    ).toBe(200);
+    expect(
+      (await (await teacher.request.get(`/api/lessons/${copy.id}`)).json())
+        .attachments,
+    ).toEqual([]);
+    expect((await teacher.request.get(lessonFile)).status()).toBe(200);
+    expect(
+      (
+        await write(teacher, `/api/lessons/${lesson.id}`, "DELETE", {})
+      ).status(),
+    ).toBe(204);
+    expect(
+      (await student.request.get(lessonFile, { maxRedirects: 0 })).status(),
+    ).toBe(302);
+    // Archived lessons cannot be edited through the API.
+    expect(
+      (
+        await write(teacher, `/api/lessons/${lesson.id}`, "PUT", {
+          title: lesson.title,
+          content: lesson.content,
+          isPublished: true,
+          uploadedFileIds: "",
+        })
+      ).status(),
+    ).toBe(404);
     expect(errors).toEqual([]);
   } finally {
     await teacherContext.close();

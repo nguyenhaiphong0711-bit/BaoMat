@@ -22,7 +22,7 @@ Lỗi `npm` không tồn tại: cài Node.js rồi mở lại VS Code/Terminal �
 - Dashboard theo tài khoản, số lớp thực và danh mục môn học thực.
 - Danh mục môn học: tìm kiếm, lọc khoa, phân trang; Admin thêm/sửa/xóa qua API.
 - Danh sách lớp theo phạm vi của người dùng và thông tin lớp.
-- Bài học: tạo, sửa, lưu nháp, công bố và lưu trữ bằng React.
+- Bài học: tạo, sửa, lưu nháp, công bố, lưu trữ và đính kèm tệp bằng React. Giáo viên có thể giữ/bỏ tệp khi sửa; tối đa 5 tệp, 25 MB/tệp. Sinh viên chỉ tải được tệp của bài đã công bố trong lớp của mình.
 - Bài tập: tạo/sửa, hạn nộp theo giờ địa phương, tệp đính kèm, công bố và lưu trữ.
 - Sinh viên: nộp nội dung hoặc tệp, nộp lại, xem điểm và nhận xét.
 - Giáo viên: xem bài nộp, tải tệp, chấm điểm và nhận xét trong lớp được phân công.

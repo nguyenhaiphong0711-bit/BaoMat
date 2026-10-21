@@ -31,6 +31,33 @@ public class UploadController : Controller
         _users = users;
     }
 
+    [HttpPost, Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.LessonsManage), ValidateAntiForgeryToken]
+    [RequestSizeLimit(FileStorageService.MaxFileSize + 1024 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = FileStorageService.MaxFileSize + 1024 * 1024)]
+    public async Task<IActionResult> LessonAttachment(string classId)
+    {
+        if (!ObjectId.TryParse(classId, out var classObjectId))
+            return BadRequest("Lớp học không hợp lệ.");
+
+        var user = await GetCurrentUserAsync();
+        if (user is null || !await _classes.HasAccessAsync(classId, user))
+            return Forbid();
+
+        var file = Request.Form.Files.GetFile("file");
+        if (file is null)
+            return BadRequest("Không tìm thấy tệp tải lên.");
+
+        try
+        {
+            var reference = await _files.UploadAsync(file, user.Id, classObjectId, "lesson-resource");
+            return Content(reference.Id.ToString(), "text/plain");
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(exception.Message);
+        }
+    }
+
     [HttpPost, Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.AssignmentsManage), ValidateAntiForgeryToken]
     [RequestSizeLimit(FileStorageService.MaxFileSize + 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = FileStorageService.MaxFileSize + 1024 * 1024)]
