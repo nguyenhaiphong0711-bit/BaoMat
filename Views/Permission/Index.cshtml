@@ -149,21 +149,52 @@
                 }
 
                 <div class="section-heading"><span class="eyebrow">QUYỀN CỦA TÀI KHOẢN</span><h2>Chọn chức năng được phép sử dụng</h2></div>
-                @foreach (var group in Model.Permissions.Where(p => LMS.Models.PermissionCodes.IsAllowedForRole(Model.SelectedUser.Role, p.Code)).GroupBy(x => x.Category))
+                @foreach (var group in Model.Permissions.Where(p => LMS.Models.PermissionCodes.IsAllowedForRole(Model.SelectedUser.Role, p.Code) && p.AllowedRoles.Contains(Model.SelectedUser.Role)).GroupBy(x => x.Category))
                 {
                     <fieldset class="permission-group">
                         <legend>@group.Key</legend>
                         @foreach (var permission in group)
                         {
                             <label class="permission-option">
-                                <input type="checkbox" name="Assignment.PermissionCodes" value="@permission.Code"
+                                <input type="checkbox" name="Assignment.PermissionCodes" value="@permission.Code" data-requires="@string.Join(",", permission.RequiredCodes)"
                                        checked="@Model.Assignment.PermissionCodes.Contains(permission.Code)" />
-                                <span><strong>@permission.Name</strong><small>@permission.Description</small><code>@permission.Code</code></span>
+                                <span><strong>@permission.Name</strong><small>@permission.Description</small><code>@permission.Code</code>
+                                    @if (permission.RequiredCodes.Count > 0)
+                                    {
+                                        <small>Cần có: @string.Join(", ", Model.Permissions.Where(p => permission.RequiredCodes.Contains(p.Code)).Select(p => p.Name))</small>
+                                    }</span>
                             </label>
                         }
                     </fieldset>
                 }
+                <p class="muted">Chọn quyền thao tác sẽ chọn kèm quyền xem cần thiết. Bỏ quyền xem sẽ bỏ các quyền thao tác phụ thuộc. Quyền chỉ có hiệu lực trong lớp được phân công hoặc tham gia.</p>
                 <div class="action-row"><button type="submit">Lưu quyền và hồ sơ</button></div>
+                <script>
+                    {
+                        const boxes = [...document.querySelectorAll('#permission-form input[data-requires]')];
+                        const requirements = box => box.dataset.requires.split(',').filter(Boolean);
+                        const choose = box => {
+                            box.checked = true;
+                            for (const code of requirements(box)) {
+                                const required = boxes.find(item => item.value === code);
+                                if (required && !required.checked) choose(required);
+                            }
+                        };
+                        for (const box of boxes) box.addEventListener('change', () => {
+                            if (box.checked) choose(box);
+                            else {
+                                let changed;
+                                do {
+                                    changed = false;
+                                    for (const item of boxes) if (item.checked && requirements(item).some(code => !boxes.find(other => other.value === code)?.checked)) {
+                                        item.checked = false;
+                                        changed = true;
+                                    }
+                                } while (changed);
+                            }
+                        });
+                    }
+                </script>
             </form>
         </section>
     }
@@ -210,7 +241,11 @@
                 {
                     <tr>
                         <td><strong>@permission.Name</strong><br /><small class="muted">@permission.Description</small></td>
-                        <td><code>@permission.Code</code><br />@if (!string.IsNullOrEmpty(permission.ControllerName)) { <small>@permission.ControllerName / @permission.ActionName</small> }</td>
+                        <td><code>@permission.Code</code>
+                                    @if (permission.RequiredCodes.Count > 0)
+                                    {
+                                        <small>Cần có: @string.Join(", ", Model.Permissions.Where(p => permission.RequiredCodes.Contains(p.Code)).Select(p => p.Name))</small>
+                                    }<br />@if (!string.IsNullOrEmpty(permission.ControllerName)) { <small>@permission.ControllerName / @permission.ActionName</small> }</td>
                         <td>@(permission.IsSystem ? "Hệ thống" : "Tùy chỉnh")</td>
                         <td>
                             @if (!permission.IsSystem)

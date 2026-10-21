@@ -32,6 +32,7 @@ public class MongoContext
     public IMongoCollection<TeacherAvailability> TeacherAvailabilities => _database.GetCollection<TeacherAvailability>("TeacherAvailabilities");
     public IMongoCollection<ClassSession> ClassSessions => _database.GetCollection<ClassSession>("ClassSessions");
     public IMongoCollection<SessionEnrollment> SessionEnrollments => _database.GetCollection<SessionEnrollment>("SessionEnrollments");
+    public IMongoCollection<PermissionMigration> PermissionMigrations => _database.GetCollection<PermissionMigration>("PermissionMigrations");
     public IMongoCollection<Permission> Permissions => _database.GetCollection<Permission>("Permissions");
     public IMongoCollection<AcademicProgram> AcademicPrograms => _database.GetCollection<AcademicProgram>("AcademicPrograms");
     public IMongoCollection<AcademicTerm> AcademicTerms => _database.GetCollection<AcademicTerm>("AcademicTerms");

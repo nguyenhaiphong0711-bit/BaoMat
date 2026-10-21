@@ -57,7 +57,7 @@ Mở `http://localhost:5000`.
 
 Sau khi pull bản mới, từ thư mục dự án chỉ cần `dotnet run`: ứng dụng tự cài dependency frontend khi cần, build React và chạy Vite cùng ASP.NET. Mở `http://localhost:5000` để vào giao diện mới. Giữ nguyên MongoDB và `.env` hiện có. Máy phát triển cần Node.js; máy chạy bản publish không cần Node.js.
 
-Bản đầu chuyển đăng nhập/OTP, dashboard, danh mục môn học và trang lớp sang React. Các nghiệp vụ còn lại tiếp tục mở trang Razor hiện có, dùng chung phiên đăng nhập. Xem [FRONTEND.md](FRONTEND.md) để biết cấu trúc Context + reducer, cách chạy, publish, kiểm thử và phạm vi chuyển đổi.
+React hiện hỗ trợ đăng nhập/OTP, dashboard, môn học, lớp, bài học và tệp đính kèm, bài tập, nộp bài và chấm điểm. Các nghiệp vụ lịch/học vụ/quản trị còn lại dùng trang Razor hiện có, dùng chung phiên đăng nhập. Xem [FRONTEND.md](FRONTEND.md) để biết cấu trúc Context + reducer, cách chạy, publish, kiểm thử và phạm vi chuyển đổi.
 
 ## Theo dõi học tập và thanh toán học phí
 Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệt đăng ký**. Chỉ yêu cầu được duyệt mới ghi danh sinh viên vào lớp và tạo hóa đơn. Sinh viên xem môn đang học, tín chỉ đã ghi danh và điểm trung bình các bài tập đã chấm tại **Môn học & điểm**. Điểm này chỉ là trung bình bài tập, chưa phải điểm tổng kết môn có trọng số. Mục **Học phí** hiển thị từng hóa đơn theo lớp/môn. Khi Admin cấu hình đơn giá mỗi tín chỉ trong mục **Học kỳ**, hệ thống tính hóa đơn lúc yêu cầu được duyệt; hóa đơn giữ snapshot đơn giá đó kể cả khi Admin cập nhật biểu phí sau này. Việc rút khỏi lớp đã thanh toán cần Admin xử lý do chưa tích hợp hoàn tiền.
@@ -206,6 +206,8 @@ python3 tests/password_reset_smoke.py --dotnet /path/to/dotnet --dll /path/to/LM
 Thêm `--implicit-tls` để kiểm tra TLS trên cổng 465 (cổng phải đang trống), `--missing-config` để kiểm tra thiếu cấu hình, hoặc `--untrusted-tls` để xác nhận chứng chỉ không tin cậy bị từ chối. Tùy chọn `--postman` chạy thêm collection hiện có bằng Newman 6.2.3 và báo lỗi nếu script của collection thất bại. Xem `PROJECT_REVIEW.md` về các vấn đề còn tồn tại trong collection và phạm vi rà soát.
 
 ## Phân quyền và triển khai an toàn
+
+Xem [PERMISSIONS.md](PERMISSIONS.md) để biết ma trận 16 quyền, quy tắc quyền phụ thuộc và quá trình tự đồng bộ collection `Permissions`/quyền tài khoản khi khởi động. Bản cập nhật giữ quyền tùy chỉnh hợp lệ và quyền đã thu hồi, lưu đối chiếu trong `PermissionMigrations`.
 
 Admin quản trị tài khoản/học vụ; Teacher chỉ quản lý lớp được phân công; Student chỉ nộp bài, xem điểm và học phí của chính mình. Quyền chức năng phải đồng thời phù hợp với role và quyền truy cập tài nguyên; gán nhầm quyền Teacher cho Student không cấp quyền chấm bài. Chi tiết phạm vi kiểm thử và các giới hạn còn lại ở [PROJECT_REVIEW.md](PROJECT_REVIEW.md).
 

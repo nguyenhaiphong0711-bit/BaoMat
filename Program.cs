@@ -61,6 +61,15 @@ var useReactDevServer = builder.Environment.IsDevelopment() && builder.Configura
 if (useReactDevServer) builder.Services.AddHostedService<ReactDevelopmentServer>();
 var app = builder.Build();
 
+// Maintenance mode updates only permission definitions/grants, without seeding data or starting a server.
+if (args.Contains("--sync-permissions", StringComparer.Ordinal))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<PermissionService>().InitializeAsync();
+    Console.WriteLine("Permission definitions and account grants synchronized.");
+    return;
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/error");

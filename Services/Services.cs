@@ -24,9 +24,10 @@ public class ActivityLogService
 public class AuthService
 {
     private readonly MongoContext _db;
+    private readonly PermissionService _permissions;
     private readonly SecuritySettings _security;
     private readonly ActivityLogService _logs;
-    public AuthService(MongoContext db, IOptions<SecuritySettings> security, ActivityLogService logs) { _db = db; _security = security.Value; _logs = logs; }
+    public AuthService(MongoContext db, IOptions<SecuritySettings> security, ActivityLogService logs, PermissionService permissions) { _permissions = permissions; _db = db; _security = security.Value; _logs = logs; }
 
     public async Task<(bool Success, string Message, User? User)> LoginAsync(LoginViewModel vm, HttpContext context)
     {
@@ -63,6 +64,7 @@ public class AuthService
                 continue;
             await _logs.LogAsync(context, user.Id, email, "LOGIN", valid,
                 valid ? "Login successful" : "Invalid password");
+            if (valid) updated.PermissionCodes = await _permissions.GetEffectiveCodesAsync(updated);
             return valid ? (true, "Đăng nhập thành công.", updated) : (false, "Email hoặc mật khẩu không đúng.", null);
         }
         return (false, "Email hoặc mật khẩu không đúng.", null);
@@ -72,7 +74,8 @@ public class AuthService
 public class UserService
 {
     private readonly MongoContext _db;
-    public UserService(MongoContext db) => _db = db;
+    private readonly PermissionService _permissions;
+    public UserService(MongoContext db, PermissionService permissions) { _db = db; _permissions = permissions; }
     public Task<List<User>> GetAllAsync() => _db.Users.Find(_ => true).SortBy(x => x.Role).ToListAsync();
     public async Task<bool> CreateAsync(CreateUserViewModel vm)
     {
@@ -135,7 +138,15 @@ public class UserService
         return user;
     }
 
-    public async Task ToggleAsync(string id) { if (!ObjectId.TryParse(id, out var oid)) return; var u = await GetAsync(id); if (u != null) { u.IsActive = !u.IsActive; await _db.Users.ReplaceOneAsync(x => x.Id == oid, u); } }
+    public async Task ToggleAsync(string id)
+    {
+        if (!ObjectId.TryParse(id, out var userId)) return;
+        var user = await GetAsync(id);
+        if (user is null) return;
+        // A lock/unlock must not overwrite permissions changed by another Admin.
+        await _db.Users.UpdateOneAsync(x => x.Id == userId && x.IsActive == user.IsActive,
+            Builders<User>.Update.Set(x => x.IsActive, !user.IsActive));
+    }
     public Task<List<User>> GetTeachersAsync() => _db.Users.Find(x => x.Role == Roles.Teacher && x.IsActive).ToListAsync();
     public Task<List<User>> GetStudentsAsync() => _db.Users.Find(x => x.Role == Roles.Student && x.IsActive).ToListAsync();
     public Task<List<User>> GetByIdsAsync(ObjectId[] ids) =>
@@ -145,7 +156,7 @@ public class UserService
     {
         var user = await _db.Users.Find(x => x.Id == userId && x.IsActive).FirstOrDefaultAsync();
         return user is { Role: Roles.Admin } ||
-            user?.PermissionCodes.Contains(permissionCode, StringComparer.Ordinal) == true;
+            (user is not null && (await _permissions.GetEffectiveCodesAsync(user)).Contains(permissionCode, StringComparer.Ordinal));
     }
 
     public async Task<bool> AssignTeachingSubjectsAsync(string teacherId, IReadOnlyCollection<string> subjectIds)
@@ -212,13 +223,13 @@ public class UserService
             if (assignedClasses.Any(classroom => !subjectIds.Contains(classroom.SubjectId)))
                 return false;
 
-            await _db.Users.UpdateOneAsync(x => x.Id == userId,
+            var result = await _db.Users.UpdateOneAsync(x => x.Id == userId && x.IsActive && x.Role == user.Role,
                 Builders<User>.Update
                     .Set(x => x.DepartmentId, departmentId)
                     .Set(x => x.TeachingSubjectIds, subjectIds.ToList())
                     .Set(x => x.ProgramId, (ObjectId?)null)
                     .Set(x => x.AcademicProfileInitialized, true));
-            return true;
+            return result.MatchedCount == 1;
         }
 
         if (user.Role == Roles.Student)
@@ -229,14 +240,14 @@ public class UserService
                     .FirstOrDefaultAsync() is not { } program)
                 return false;
 
-            await _db.Users.UpdateOneAsync(x => x.Id == userId,
+            var result = await _db.Users.UpdateOneAsync(x => x.Id == userId && x.IsActive && x.Role == user.Role,
                 Builders<User>.Update
                     .Set(x => x.ProgramId, programId)
                     .Set(x => x.DepartmentId, program.DepartmentId)
                     .Set(x => x.CurrentSemester, model.CurrentSemester)
                     .Set(x => x.TeachingSubjectIds, new List<ObjectId>())
                     .Set(x => x.AcademicProfileInitialized, true));
-            return true;
+            return result.MatchedCount == 1;
         }
 
         return false;

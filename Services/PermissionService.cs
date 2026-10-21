@@ -22,39 +22,53 @@ public class PermissionService(MongoContext db)
                     .Set(x => x.Name, definition.Name)
                     .Set(x => x.Category, definition.Category)
                     .Set(x => x.Description, definition.Description)
-                    .Set(x => x.IsSystem, true),
+                    .Set(x => x.IsSystem, true)
+                    .Set(x => x.ControllerName, "")
+                    .Set(x => x.ActionName, "")
+                    .Set(x => x.AllowedRoles, new[] { Roles.Teacher, Roles.Student }.Where(role => PermissionCodes.DefaultsForRole(role).Contains(definition.Code)).ToList())
+                    .Set(x => x.RequiredCodes, PermissionCodes.RequiredFor(definition.Code).ToList()),
                 new UpdateOptions { IsUpsert = true });
         }
 
-        var users = await db.Users.Find(x => !x.PermissionsInitialized).ToListAsync();
-        foreach (var user in users)
+        var definitions = await GetAllAsync();
+        foreach (var user in await db.Users.Find(_ => true).ToListAsync())
         {
-            user.PermissionCodes = PermissionCodes.DefaultsForRole(user.Role).ToList();
-            user.PermissionsInitialized = true;
-            user.StudentPortalPermissionsInitialized = user.Role == Roles.Student;
-            await db.Users.UpdateOneAsync(
-                x => x.Id == user.Id && !x.PermissionsInitialized,
-                Builders<User>.Update
-                    .Set(x => x.PermissionCodes, user.PermissionCodes)
-                    .Set(x => x.PermissionsInitialized, true)
-                    .Set(x => x.StudentPortalPermissionsInitialized, user.StudentPortalPermissionsInitialized));
-        }
+            var proposed = !user.PermissionsInitialized && user.PermissionCodes.Count == 0
+                ? PermissionCodes.DefaultsForRole(user.Role).ToList()
+                : user.PermissionCodes.ToList();
+            if (user.Role == Roles.Student && !user.StudentPortalPermissionsInitialized)
+                proposed.AddRange(new[] { PermissionCodes.StudentProgressView, PermissionCodes.TuitionView, PermissionCodes.TuitionPay });
+            var clean = PermissionCodes.EffectiveFor(user.Role, proposed, definitions);
+            var portalInitialized = user.StudentPortalPermissionsInitialized || user.Role == Roles.Student;
+            if (user.PermissionsInitialized && user.StudentPortalPermissionsInitialized == portalInitialized &&
+                user.PermissionCodes.SequenceEqual(clean)) continue;
 
-        var studentsNeedingPortalPermissions = await db.Users.Find(x =>
-            x.Role == Roles.Student && !x.StudentPortalPermissionsInitialized).ToListAsync();
-        foreach (var student in studentsNeedingPortalPermissions)
-        {
-            var grants = student.PermissionCodes.ToHashSet(StringComparer.Ordinal);
-            grants.Add(PermissionCodes.StudentProgressView);
-            grants.Add(PermissionCodes.TuitionView);
-            grants.Add(PermissionCodes.TuitionPay);
-            await db.Users.UpdateOneAsync(
-                x => x.Id == student.Id && !x.StudentPortalPermissionsInitialized,
-                Builders<User>.Update
-                    .Set(x => x.PermissionCodes, grants.ToList())
-                    .Set(x => x.StudentPortalPermissionsInitialized, true));
+            var snapshot = new PermissionMigration { UserId = user.Id, Role = user.Role,
+                Before = user.PermissionCodes.ToList(), After = clean };
+            await db.PermissionMigrations.InsertOneAsync(snapshot);
+            // Match the snapshot so startup cannot overwrite a concurrent revocation or role change.
+            var filter = Builders<User>.Filter.And(
+                Builders<User>.Filter.Eq(x => x.Id, user.Id),
+                Builders<User>.Filter.Eq(x => x.Role, user.Role),
+                user.PermissionCodes.Count == 0
+                    ? Builders<User>.Filter.Or(Builders<User>.Filter.Eq(x => x.PermissionCodes, user.PermissionCodes), Builders<User>.Filter.Exists(x => x.PermissionCodes, false))
+                    : Builders<User>.Filter.Eq(x => x.PermissionCodes, user.PermissionCodes),
+                user.PermissionsInitialized
+                    ? Builders<User>.Filter.Eq(x => x.PermissionsInitialized, true)
+                    : Builders<User>.Filter.Ne(x => x.PermissionsInitialized, true),
+                user.StudentPortalPermissionsInitialized
+                    ? Builders<User>.Filter.Eq(x => x.StudentPortalPermissionsInitialized, true)
+                    : Builders<User>.Filter.Ne(x => x.StudentPortalPermissionsInitialized, true));
+            var result = await db.Users.UpdateOneAsync(filter, Builders<User>.Update
+                .Set(x => x.PermissionCodes, clean).Set(x => x.PermissionsInitialized, true)
+                .Set(x => x.StudentPortalPermissionsInitialized, portalInitialized));
+            await db.PermissionMigrations.UpdateOneAsync(x => x.Id == snapshot.Id,
+                Builders<PermissionMigration>.Update.Set(x => x.Applied, result.MatchedCount == 1));
         }
     }
+
+    public async Task<List<string>> GetEffectiveCodesAsync(User user) =>
+        user.IsActive ? PermissionCodes.EffectiveFor(user.Role, user.PermissionCodes, await GetAllAsync()) : new();
 
     public Task<List<Permission>> GetAllAsync() =>
         db.Permissions.Find(_ => true).SortBy(x => x.Category).ThenBy(x => x.Name).ToListAsync();
@@ -130,8 +144,7 @@ public class PermissionService(MongoContext db)
             return false;
 
         var uniqueCodes = codes.Distinct(StringComparer.Ordinal).ToArray();
-        if (uniqueCodes.Any(code => !PermissionCodes.IsAllowedForRole(user.Role, code)) ||
-            !await AreValidCodesAsync(uniqueCodes))
+        if (!await AreValidForRoleAsync(user.Role, uniqueCodes))
             return false;
 
         var result = await db.Users.UpdateOneAsync(
@@ -148,8 +161,13 @@ public class PermissionService(MongoContext db)
         if (!MongoDB.Bson.ObjectId.TryParse(userId, out var id)) return false;
         var user = await db.Users.Find(x => x.Id == id && x.IsActive).FirstOrDefaultAsync();
         return user is not null && user.Role != Roles.Admin &&
-            codes.All(code => PermissionCodes.IsAllowedForRole(user.Role, code)) &&
-            await AreValidCodesAsync(codes);
+            await AreValidForRoleAsync(user.Role, codes);
+    }
+
+    private async Task<bool> AreValidForRoleAsync(string role, IReadOnlyCollection<string> codes)
+    {
+        var expected = codes.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal);
+        return expected.SequenceEqual(PermissionCodes.EffectiveFor(role, codes, await GetAllAsync()));
     }
 
     public async Task<bool> AreValidCodesAsync(IReadOnlyCollection<string> codes)

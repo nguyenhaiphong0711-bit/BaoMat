@@ -51,7 +51,7 @@ public class PermissionController(
             !await users.UpdateAcademicProfileAsync(model) ||
             !await permissions.SetForUserAsync(model.UserId, model.PermissionCodes))
         {
-            TempData["Error"] = "Không thể lưu quyền hoặc hồ sơ học vụ. Kiểm tra khoa/ngành, môn giảng dạy và các quyền đã chọn.";
+            TempData["Error"] = "Không thể lưu quyền hoặc hồ sơ học vụ. Kiểm tra khoa/ngành, môn giảng dạy, vai trò và chọn đủ quyền xem cần thiết cho quyền thao tác.";
             return RedirectToAction(nameof(Index), new { userId = model.UserId });
         }
 

@@ -7,7 +7,7 @@ using LMS.Models;
 
 namespace LMS.Middleware;
 
-public sealed class AppCookieAuthenticationEvents(UserService users) : CookieAuthenticationEvents
+public sealed class AppCookieAuthenticationEvents(UserService users, PermissionService permissions) : CookieAuthenticationEvents
 {
     public override Task RedirectToLogin(RedirectContext<CookieAuthenticationOptions> context)
     {
@@ -57,11 +57,7 @@ public sealed class AppCookieAuthenticationEvents(UserService users) : CookieAut
                 .Select(claim => claim.Value)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
-            var current = user.PermissionCodes
-                .Where(code => PermissionCodes.IsAllowedForRole(user.Role, code))
-                .Distinct(StringComparer.Ordinal)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
+            var current = (await permissions.GetEffectiveCodesAsync(user)).ToArray();
             if (existing.SequenceEqual(current, StringComparer.Ordinal))
                 return;
 
