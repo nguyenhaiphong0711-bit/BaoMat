@@ -31,6 +31,7 @@ builder.Services.AddScoped<StudentAcademicService>();
 builder.Services.AddScoped<VnpayPaymentService>();
 builder.Services.AddScoped<GmailEmailSender>();
 builder.Services.AddScoped<PasswordResetService>();
+builder.Services.AddScoped<PasswordResetRateLimiter>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddScoped<ActionPermissionFilter>();
@@ -58,12 +59,24 @@ var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler("/error");
 }
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["Referrer-Policy"] = "same-origin";
+    await next();
+});
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true)
+        context.Response.Headers.CacheControl = "no-store";
+    await next();
+});
 app.UseAuthorization();
 
 app.MapControllerRoute(

@@ -12,7 +12,7 @@ Bài tập nhỏ môn học, tập trung vào MVC, REST API và security. UI adm
 
 Danh mục học vụ được lưu trong MongoDB database `LMS_Secure`: `Departments` chứa khoa, `Subjects` chứa môn, `AcademicPrograms` chứa ngành học, `ProgramCourses` liên kết môn với ngành và học kỳ chương trình, `AcademicTerms` chứa học kỳ, và `Classes` chứa lớp. Trong giao diện quản trị, mục **Ngành học** cho phép tạo/sửa ngành, thêm môn của khoa tương ứng vào đề cương, chọn học kỳ/tín chỉ và lưu trữ/mở lại ngành. Ngành đang được gán cho sinh viên không thể lưu trữ cho đến khi chuyển các hồ sơ đó sang ngành khác. Các entity MongoDB được tách thành file riêng trong `Models/`; `SeedData` tạo dữ liệu mặc định và gắn các bản ghi cũ còn thiếu liên kết mà không xóa dữ liệu.
 
-Quản trị học vụ bổ sung `AcademicPrograms`, `ProgramCourses`, `AcademicTerms` và `StudentRegistrations`. Mỗi hồ sơ sinh viên gắn một chương trình và học kỳ hiện tại; lớp được mở trong một học kỳ và có sức chứa. Khi sinh viên đăng ký, máy chủ kiểm tra đề cương, kỳ đăng ký, sĩ số và trùng lịch rồi ghi danh ngay. Admin có thể quản lý chương trình/đề cương, học kỳ, hồ sơ học vụ và quyền riêng từng tài khoản tại mục **Phân quyền**.
+Quản trị học vụ bổ sung `AcademicPrograms`, `ProgramCourses`, `AcademicTerms` và `StudentRegistrations`. Mỗi hồ sơ sinh viên gắn một chương trình và học kỳ hiện tại; lớp được mở trong một học kỳ và có sức chứa. Khi sinh viên đăng ký, máy chủ kiểm tra đề cương và kỳ đăng ký, sau đó tạo yêu cầu chờ Admin duyệt; khi duyệt sẽ kiểm tra sĩ số và trùng lịch trước khi ghi danh. Admin có thể quản lý chương trình/đề cương, học kỳ, hồ sơ học vụ và quyền riêng từng tài khoản tại mục **Phân quyền**.
 
 ## Giao diện
 - Bố cục điều hướng bên trái theo vai trò, thanh tiêu đề và vùng nội dung có chiều rộng nhất quán.
@@ -89,7 +89,7 @@ Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệ
 3. Chọn **Create Web Service**. Container bind tới `0.0.0.0` và dùng biến `PORT` Render cung cấp (mặc định dự phòng `10000`).
 4. Đảm bảo MongoDB cho phép kết nối mạng từ dịch vụ Render, sau đó mở URL được Render cấp.
 
-**Lưu ý bảo mật:** ứng dụng hiện tự tạo tài khoản demo khi collection `Users` còn trống (`admin@lms.com` / `Admin@123`, cùng tài khoản Teacher/Student demo). Không để các thông tin này làm tài khoản production; trước khi public, hãy chuẩn bị tài khoản quản trị riêng và thay đổi hoặc loại bỏ credentials demo.
+**Lưu ý bảo mật:** tài khoản demo chỉ được tạo trong Development khi `Users` còn trống. Database Production trống yêu cầu cấu hình Admin ban đầu bằng `Bootstrap__AdminEmail` và `Bootstrap__AdminPassword`. Nếu đã có tài khoản demo từ bản cũ trên production, hãy đổi mật khẩu hoặc khóa chúng trước khi public.
 
 Tài liệu bài tập và tệp học viên nộp được lưu trong MongoDB GridFS, không lưu trên filesystem tạm của container Render. File upload giới hạn 25 MB mỗi tệp, tối đa 5 tệp cho mỗi lượt tạo bài tập/nộp bài.
 
@@ -150,7 +150,7 @@ API dùng cookie authentication giống MVC, không phát hành bearer/JWT token
 ## Đánh giá authentication/authorization
 - Đã có: BCrypt password hashing; lockout theo tài khoản sau số lần sai cấu hình; ghi log login; cookie `HttpOnly`, `SameSite=Lax`, hết hạn 8 giờ và sliding expiration; role authorization; kiểm tra membership/teacher ownership ở server; antiforgery cho form MVC; cookie production chỉ gửi qua HTTPS.
 - Đã bổ sung: API login/me/logout; API trả status JSON `401`/`403`; mỗi request xác thực lại trạng thái active và role hiện tại để vô hiệu cookie cũ sau khi khóa tài khoản/đổi role; logout MVC chuyển sang POST có antiforgery (không còn logout bằng GET).
-- Chưa đầy đủ cho production: mật khẩu mới bắt buộc tối thiểu 8 ký tự nhưng chưa có MFA, xác minh email hoặc giới hạn tốc độ theo IP; đã có đặt lại mật khẩu qua OTP email; lockout hiện chủ yếu theo tài khoản và có thể bị race khi login đồng thời. Thông báo lỗi đăng nhập đã dùng nội dung chung để hạn chế dò tài khoản. Hiện phù hợp demo/bài tập hơn là yêu cầu production có rủi ro cao.
+- Chưa đầy đủ cho production: mật khẩu mới bắt buộc tối thiểu 8 ký tự nhưng chưa có MFA, xác minh email hoặc giới hạn tốc độ theo IP; đã có đặt lại mật khẩu qua OTP email; lockout được cập nhật nguyên tử theo tài khoản để xử lý login đồng thời, nhưng chưa có giới hạn theo IP trên nhiều tài khoản. Thông báo lỗi đăng nhập đã dùng nội dung chung để hạn chế dò tài khoản. Hiện phù hợp demo/bài tập hơn là yêu cầu production có rủi ro cao.
 - Quyền chức năng được lưu trong `Permissions` và `Users.PermissionCodes`; Admin có thể gán quyền hệ thống cho từng giáo viên/sinh viên, thêm/xóa mã quyền tùy chỉnh và ánh xạ một quyền tùy chỉnh vào một cặp MVC `Controller/Action`. Việc ẩn menu/nút chỉ là UX; policy/filter server-side vẫn chặn truy cập URL trực tiếp. Admin được bypass quyền chức năng, còn role vẫn xác định loại tài khoản và giới hạn các hành động miền (ví dụ nộp bài chỉ dành cho Student).
 - Seed chạy migration bổ sung cho hồ sơ cũ chưa được khởi tạo: gán khoa/chương trình mặc định và liên kết lớp cũ với học kỳ phù hợp. Nếu đã có học kỳ nhưng không có học kỳ active, seed không tự kích hoạt lại học kỳ đã đóng; Admin cần chọn học kỳ đang mở.
 - Ghi danh cập nhật `Classes.StudentIds` và `StudentRegistrations` bằng các thao tác MongoDB riêng, không phải transaction đa document; khi chạy MongoDB replica set có thể cân nhắc transaction nếu cần bảo đảm nguyên tử tuyệt đối.
@@ -198,3 +198,17 @@ python3 tests/password_reset_smoke.py --dotnet /path/to/dotnet --dll /path/to/LM
 ```
 
 Thêm `--implicit-tls` để kiểm tra TLS trên cổng 465 (cổng phải đang trống), `--missing-config` để kiểm tra thiếu cấu hình, hoặc `--untrusted-tls` để xác nhận chứng chỉ không tin cậy bị từ chối. Tùy chọn `--postman` chạy thêm collection hiện có bằng Newman 6.2.3 và báo lỗi nếu script của collection thất bại. Xem `PROJECT_REVIEW.md` về các vấn đề còn tồn tại trong collection và phạm vi rà soát.
+
+## Phân quyền và triển khai an toàn
+
+Admin quản trị tài khoản/học vụ; Teacher chỉ quản lý lớp được phân công; Student chỉ nộp bài, xem điểm và học phí của chính mình. Quyền chức năng phải đồng thời phù hợp với role và quyền truy cập tài nguyên; gán nhầm quyền Teacher cho Student không cấp quyền chấm bài. Chi tiết phạm vi kiểm thử và các giới hạn còn lại ở [PROJECT_REVIEW.md](PROJECT_REVIEW.md).
+
+Bộ kiểm thử bảo mật (dùng database local riêng và SMTP local, không gửi email thật):
+
+```bash
+python3 tests/security_regression.py --dotnet /path/to/dotnet --dll /path/to/LMS.dll --postman
+```
+
+Database **Production trống** cần `Bootstrap__AdminEmail` và `Bootstrap__AdminPassword` (tối thiểu 12 ký tự) trong cấu hình bí mật của máy chạy ứng dụng. Các biến chỉ được đọc khi chưa có tài khoản; có thể gỡ sau khi tạo Admin. Không commit mật khẩu vào Git. Development vẫn có tài khoản demo; các tài khoản demo production đã tồn tại từ bản cũ cần được quản trị viên đổi mật khẩu hoặc khóa.
+
+Bản sửa bổ sung unique index cho `Users.Email`. Nếu database cũ có email trùng, cần đối soát các tài khoản trùng trước khi ứng dụng khởi động được; không tự xóa dữ liệu. Giữ MongoDB authentication/TLS và giới hạn mạng khi triển khai. Các cập nhật học vụ xuyên nhiều collection vẫn cần transaction hoặc phục hồi nếu yêu cầu nguyên tử tuyệt đối.

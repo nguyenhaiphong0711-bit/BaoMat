@@ -22,11 +22,26 @@ public static class SeedData
         }
         if (!await db.Users.Find(_ => true).AnyAsync())
         {
-            await db.Users.InsertManyAsync(new[] {
+            var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
+            if (!environment.IsDevelopment())
+            {
+                var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+                var email = configuration["Bootstrap:AdminEmail"]?.Trim().ToLowerInvariant();
+                var password = configuration["Bootstrap:AdminPassword"];
+                if (string.IsNullOrWhiteSpace(email) || !System.Net.Mail.MailAddress.TryCreate(email, out _) ||
+                    string.IsNullOrWhiteSpace(password) || password.Length < 12)
+                    throw new InvalidOperationException("An empty production database requires Bootstrap__AdminEmail and Bootstrap__AdminPassword (at least 12 characters). Demo accounts are only created in Development.");
+                await db.Users.InsertOneAsync(new User { FullName = "Administrator", Email = email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), Role = Roles.Admin });
+            }
+            else
+            {
+                await db.Users.InsertManyAsync(new[] {
                 new User { FullName="Administrator", Email="admin@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Admin@123"), Role=Roles.Admin },
                 new User { FullName="Teacher Demo", Email="teacher@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Teacher@123"), Role=Roles.Teacher },
                 new User { FullName="Student Demo", Email="student@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Student@123"), Role=Roles.Student }
-            });
+                });
+            }
         }
 
         var generalSubject = await db.Subjects.Find(x => x.Code == "GEN101").FirstOrDefaultAsync();

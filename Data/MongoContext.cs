@@ -38,6 +38,7 @@ public class MongoContext
     public IMongoCollection<ProgramCourse> ProgramCourses => _database.GetCollection<ProgramCourse>("ProgramCourses");
     public IMongoCollection<StudentRegistration> StudentRegistrations => _database.GetCollection<StudentRegistration>("StudentRegistrations");
     public IMongoCollection<PasswordResetToken> PasswordResetTokens => _database.GetCollection<PasswordResetToken>("PasswordResetTokens");
+    public IMongoCollection<PasswordResetRequestLimit> PasswordResetRequestLimits => _database.GetCollection<PasswordResetRequestLimit>("PasswordResetRequestLimits");
     public IMongoCollection<TuitionInvoice> TuitionInvoices => _database.GetCollection<TuitionInvoice>("TuitionInvoices");
 
     public MongoContext(IOptions<MongoSettings> options)
@@ -53,6 +54,9 @@ public class MongoContext
         var client = new MongoClient(settings.ConnectionString);
         _database = client.GetDatabase(settings.DatabaseName);
         FileBucket = new GridFSBucket(_database, new GridFSBucketOptions { BucketName = "LmsUploads" });
+        Users.Indexes.CreateOne(new CreateIndexModel<User>(
+            Builders<User>.IndexKeys.Ascending(x => x.Email),
+            new CreateIndexOptions { Unique = true }));
         Departments.Indexes.CreateOne(new CreateIndexModel<Department>(
             Builders<Department>.IndexKeys.Ascending(x => x.Code),
             new CreateIndexOptions { Unique = true }));
@@ -84,6 +88,9 @@ public class MongoContext
             new CreateIndexOptions { Unique = true }));
         PasswordResetTokens.Indexes.CreateOne(new CreateIndexModel<PasswordResetToken>(
             Builders<PasswordResetToken>.IndexKeys.Ascending(x => x.ExpiresAt),
+            new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
+        PasswordResetRequestLimits.Indexes.CreateOne(new CreateIndexModel<PasswordResetRequestLimit>(
+            Builders<PasswordResetRequestLimit>.IndexKeys.Ascending(x => x.ExpiresAt),
             new CreateIndexOptions { ExpireAfter = TimeSpan.Zero }));
         TuitionInvoices.Indexes.CreateOne(new CreateIndexModel<TuitionInvoice>(
             Builders<TuitionInvoice>.IndexKeys.Ascending(x => x.StudentId).Ascending(x => x.ClassId),

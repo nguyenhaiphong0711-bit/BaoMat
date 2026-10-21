@@ -48,7 +48,9 @@ public sealed class PermissionAuthorizationHandler
         PermissionRequirement requirement)
     {
         var isAdmin = context.User.IsInRole(Roles.Admin);
-        if (isAdmin || context.User.HasClaim(PermissionCodes.ClaimType, requirement.Code))
+        var role = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+        if (isAdmin || (PermissionCodes.IsAllowedForRole(role, requirement.Code) &&
+            context.User.HasClaim(PermissionCodes.ClaimType, requirement.Code)))
             context.Succeed(requirement);
 
         return Task.CompletedTask;

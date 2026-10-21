@@ -149,7 +149,7 @@
                 }
 
                 <div class="section-heading"><span class="eyebrow">QUYỀN CỦA TÀI KHOẢN</span><h2>Chọn chức năng được phép sử dụng</h2></div>
-                @foreach (var group in Model.Permissions.GroupBy(x => x.Category))
+                @foreach (var group in Model.Permissions.Where(p => LMS.Models.PermissionCodes.IsAllowedForRole(Model.SelectedUser.Role, p.Code)).GroupBy(x => x.Category))
                 {
                     <fieldset class="permission-group">
                         <legend>@group.Key</legend>

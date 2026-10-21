@@ -62,11 +62,13 @@ public class FileController : Controller
             var parentAssignment = submission is null
                 ? null
                 : await _assignments.GetAsync(submission.AssignmentId.ToString());
+            var ownsSubmission = user.Role == Roles.Student && user.Id == submission?.StudentId;
+            var canReview = user.Role is Roles.Admin or Roles.Teacher;
             if (submission is null || parentAssignment is null ||
-                (user.Id == submission.StudentId && !await _users.HasPermissionAsync(user.Id, PermissionCodes.SubmissionsSubmit)) ||
-                (user.Id != submission.StudentId && !await _users.HasPermissionAsync(user.Id, PermissionCodes.SubmissionsReview)) ||
-                (user.Id != submission.StudentId &&
-                 !await _classes.HasAccessAsync(parentAssignment.ClassId.ToString(), user)))
+                !await _classes.HasAccessAsync(parentAssignment.ClassId.ToString(), user) ||
+                (!ownsSubmission && !canReview) ||
+                (ownsSubmission && !await _users.HasPermissionAsync(user.Id, PermissionCodes.SubmissionsSubmit)) ||
+                (!ownsSubmission && !await _users.HasPermissionAsync(user.Id, PermissionCodes.SubmissionsReview)))
             {
                 return Forbid();
             }

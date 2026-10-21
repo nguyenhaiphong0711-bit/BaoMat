@@ -107,7 +107,7 @@ class Web:
         return self.request(path, dict(data, __RequestVerificationToken=html.unescape(token[1])))
 
 
-def main():
+def main(extra_checks=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--dotnet', required=True)
     parser.add_argument('--dll', required=True)
@@ -202,7 +202,7 @@ def main():
                     passed('QUIT disconnect failure does not invalidate an accepted email')
                     smtp.drop_quit = False
                     old_hash = mongo('print(d.PasswordResetTokens.findOne().CodeHash)')
-                    mongo('d.PasswordResetTokens.updateOne({},{$set:{LastSentAt:new Date(Date.now()-61000)}})')
+                    mongo('d.PasswordResetTokens.updateOne({},{$set:{LastSentAt:new Date(Date.now()-61000)}});d.PasswordResetRequestLimits.updateOne({},{$set:{LastRequestedAt:new Date(Date.now()-61000)}})')
                     smtp.reject = True
                     assert web.form('/Auth/ForgotPassword', {'Email': 'admin@lms.com'})[0] == 503
                     assert mongo('print(d.PasswordResetTokens.findOne().CodeHash)') == old_hash
@@ -288,6 +288,8 @@ def main():
                     api(student_client, '/api/schedule/sessions/'+session['id']+'/enrollment', {}, 'POST', 204)
                     assert api(student_client, '/api/schedule/sessions/'+session['id'])['isEnrolled']
                     passed('schedule creation and student enrollment')
+                    if extra_checks is not None:
+                        extra_checks(locals())
                     if args.postman:
                         result_path = str(folder/'newman.json')
                         result = subprocess.run(['npm', 'exec', '--yes', '--package=newman@6.2.3', '--',

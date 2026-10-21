@@ -52,7 +52,13 @@
                 {
                     <div class="roster-row">
                         <div class="avatar">@(string.IsNullOrWhiteSpace(student.FullName) ? "?" : student.FullName.Substring(0, 1).ToUpperInvariant())</div>
-                        <div><strong>@student.FullName</strong><small>@student.Email</small></div>
+                        <div><strong>@student.FullName</strong>
+                        @if (User.IsInRole(Roles.Admin) || User.IsInRole(Roles.Teacher) ||
+                            User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == student.Id.ToString())
+                        {
+                            <small>@student.Email</small>
+                        }
+                        </div>
                         <span class="badge badge-enrolled">Học viên</span>
                     </div>
                 }

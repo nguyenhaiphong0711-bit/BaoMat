@@ -42,6 +42,12 @@ public static class PermissionCodes
         (TuitionPay, "Thanh toán học phí", "Học phí", "Khởi tạo thanh toán VNPAY cho khoản học phí của bản thân.")
     ];
 
+    // Custom grants add restrictions; they never replace role or resource ownership checks.
+    public static bool IsAllowedForRole(string role, string code) =>
+        role == Roles.Admin ||
+        (role is Roles.Teacher or Roles.Student &&
+         (!SystemPermissions.Any(p => p.Code == code) || DefaultsForRole(role).Contains(code, StringComparer.Ordinal)));
+
     public static IReadOnlyList<string> DefaultsForRole(string role) => role switch
     {
         Roles.Teacher =>

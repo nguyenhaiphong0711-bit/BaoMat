@@ -44,10 +44,10 @@ public class PermissionController(
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Assign(UserPermissionViewModel model)
+    public async Task<IActionResult> Assign([Bind(Prefix = "Assignment")] UserPermissionViewModel model)
     {
         if (!ModelState.IsValid ||
-            !await permissions.AreValidCodesAsync(model.PermissionCodes) ||
+            !await permissions.AreValidForUserAsync(model.UserId, model.PermissionCodes) ||
             !await users.UpdateAcademicProfileAsync(model) ||
             !await permissions.SetForUserAsync(model.UserId, model.PermissionCodes))
         {

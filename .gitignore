@@ -9,3 +9,5 @@
 TestResults/
 *.user
 *.suo
+
+__pycache__/

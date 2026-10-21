@@ -31,26 +31,41 @@ public class AuthService
     public async Task<(bool Success, string Message, User? User)> LoginAsync(LoginViewModel vm, HttpContext context)
     {
         var email = vm.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.Find(x => x.Email == email).FirstOrDefaultAsync();
-        if (user == null) { await _logs.LogAsync(context, null, email, "LOGIN", false, "User not found"); return (false, "Email hoặc mật khẩu không đúng.", null); }
-        if (!user.IsActive) { await _logs.LogAsync(context, user.Id, email, "LOGIN", false, "Account disabled"); return (false, "Email hoặc mật khẩu không đúng.", null); }
-        if (user.LockoutUntil.HasValue && user.LockoutUntil.Value > DateTime.UtcNow)
-        { await _logs.LogAsync(context, user.Id, email, "LOGIN", false, "Account temporarily locked"); return (false, "Email hoặc mật khẩu không đúng.", null); }
-
-        var valid = BCrypt.Net.BCrypt.Verify(vm.Password, user.PasswordHash);
-        if (!valid)
+        string? verifiedHash = null;
+        var valid = false;
+        for (var attempt = 0; attempt < 20; attempt++)
         {
-            user.FailedLoginAttempts++;
-            if (user.FailedLoginAttempts >= _security.MaxLoginAttempts)
-            { user.LockoutUntil = DateTime.UtcNow.AddMinutes(_security.LockoutMinutes); user.FailedLoginAttempts = 0; }
-            await _db.Users.ReplaceOneAsync(x => x.Id == user.Id, user);
-            await _logs.LogAsync(context, user.Id, email, "LOGIN", false, "Invalid password");
-            return (false, "Email hoặc mật khẩu không đúng.", null);
+            var user = await _db.Users.Find(x => x.Email == email).FirstOrDefaultAsync();
+            if (user is null || !user.IsActive || user.LockoutUntil > DateTime.UtcNow)
+            {
+                await _logs.LogAsync(context, user?.Id, email, "LOGIN", false, "Account unavailable or locked");
+                return (false, "Email hoặc mật khẩu không đúng.", null);
+            }
+            if (verifiedHash != user.PasswordHash)
+            {
+                valid = BCrypt.Net.BCrypt.Verify(vm.Password, user.PasswordHash);
+                verifiedHash = user.PasswordHash;
+            }
+            var failures = valid ? 0 : user.FailedLoginAttempts + 1;
+            DateTime? lockedUntil = null;
+            if (failures >= _security.MaxLoginAttempts)
+            {
+                lockedUntil = DateTime.UtcNow.AddMinutes(_security.LockoutMinutes);
+                failures = 0;
+            }
+            // Compare-and-swap only authentication fields. Never replace roles, grants or a newer password.
+            var updated = await _db.Users.FindOneAndUpdateAsync(
+                x => x.Id == user.Id && x.IsActive && x.PasswordHash == user.PasswordHash &&
+                    x.FailedLoginAttempts == user.FailedLoginAttempts && x.LockoutUntil == user.LockoutUntil,
+                Builders<User>.Update.Set(x => x.FailedLoginAttempts, failures).Set(x => x.LockoutUntil, lockedUntil),
+                new FindOneAndUpdateOptions<User> { ReturnDocument = ReturnDocument.After });
+            if (updated is null)
+                continue;
+            await _logs.LogAsync(context, user.Id, email, "LOGIN", valid,
+                valid ? "Login successful" : "Invalid password");
+            return valid ? (true, "Đăng nhập thành công.", updated) : (false, "Email hoặc mật khẩu không đúng.", null);
         }
-        user.FailedLoginAttempts = 0; user.LockoutUntil = null;
-        await _db.Users.ReplaceOneAsync(x => x.Id == user.Id, user);
-        await _logs.LogAsync(context, user.Id, email, "LOGIN", true, "Login successful");
-        return (true, "Đăng nhập thành công.", user);
+        return (false, "Email hoặc mật khẩu không đúng.", null);
     }
 }
 
@@ -100,7 +115,9 @@ public class UserService
             }
         }
 
-        await _db.Users.InsertOneAsync(user);
+        try { await _db.Users.InsertOneAsync(user); }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        { return false; }
         return true;
     }
     public async Task<User?> GetAsync(string id)
@@ -593,6 +610,7 @@ public class ClassService
     {
         if (user.Role == Roles.Admin) return await GetAllAsync();
         if (user.Role == Roles.Teacher) return await _db.Classes.Find(x => !x.IsArchived && x.TeacherId == user.Id).ToListAsync();
+        if (user.Role != Roles.Student || !user.IsActive) return new();
         return await _db.Classes.Find(
             Builders<ClassRoom>.Filter.And(
                 Builders<ClassRoom>.Filter.Eq(x => x.IsArchived, false),
@@ -601,7 +619,9 @@ public class ClassService
     public async Task<bool> HasAccessAsync(string classId, User user)
     {
         var c = await GetAsync(classId); if (c == null) return false;
-        return user.Role == Roles.Admin || c.TeacherId == user.Id || c.StudentIds.Contains(user.Id);
+        return user.IsActive && (user.Role == Roles.Admin ||
+            (user.Role == Roles.Teacher && c.TeacherId == user.Id) ||
+            (user.Role == Roles.Student && c.StudentIds.Contains(user.Id)));
     }
 }
 

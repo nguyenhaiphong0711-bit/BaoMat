@@ -9,12 +9,11 @@ namespace LMS.Services;
 public sealed class PasswordResetService(
     MongoContext db,
     GmailEmailSender emailSender,
+    PasswordResetRateLimiter rateLimiter,
     ILogger<PasswordResetService> logger)
 {
     private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan RequestCooldown = TimeSpan.FromSeconds(60);
-    private static readonly TimeSpan RequestWindow = TimeSpan.FromHours(1);
-    private const int MaximumRequestsPerWindow = 5;
     private const int MaximumFailedAttempts = 5;
 
     public async Task RequestCodeAsync(string email, CancellationToken cancellationToken)
@@ -36,17 +35,9 @@ public sealed class PasswordResetService(
             return;
         if (token is not null && now - token.LastSentAt < RequestCooldown)
             return;
-        if (token is not null &&
-            now - token.RequestWindowStartedAt < RequestWindow &&
-            token.RequestCount >= MaximumRequestsPerWindow)
+        var lease = await rateLimiter.TryReserveAsync(user.Id, token, cancellationToken);
+        if (lease is null)
             return;
-
-        var windowStartedAt = token is not null && now - token.RequestWindowStartedAt < RequestWindow
-            ? token.RequestWindowStartedAt
-            : now;
-        var requestCount = token is not null && windowStartedAt == token.RequestWindowStartedAt
-            ? token.RequestCount + 1
-            : 1;
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6", CultureInfo.InvariantCulture);
         var replacement = new PasswordResetToken
         {
@@ -56,8 +47,8 @@ public sealed class PasswordResetService(
             CreatedAt = now,
             ExpiresAt = now.Add(CodeLifetime),
             LastSentAt = now,
-            RequestWindowStartedAt = windowStartedAt,
-            RequestCount = requestCount,
+            RequestWindowStartedAt = lease.Current.WindowStartedAt,
+            RequestCount = lease.Current.Count,
             DeliveryPending = true,
             FailedAttempts = 0
         };
@@ -67,7 +58,7 @@ public sealed class PasswordResetService(
         {
             try { await db.PasswordResetTokens.InsertOneAsync(replacement, cancellationToken: cancellationToken); }
             catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-            { return; }
+            { await rateLimiter.ReleaseAsync(lease); return; }
         }
         else
         {
@@ -75,7 +66,10 @@ public sealed class PasswordResetService(
                 x => x.Id == token.Id && x.CodeHash == token.CodeHash && x.LastSentAt == token.LastSentAt,
                 replacement, cancellationToken: cancellationToken);
             if (reserved.ModifiedCount != 1)
+            {
+                await rateLimiter.ReleaseAsync(lease);
                 return;
+            }
         }
 
         try
@@ -93,6 +87,7 @@ public sealed class PasswordResetService(
                 await db.PasswordResetTokens.ReplaceOneAsync(
                     x => x.Id == replacement.Id && x.CodeHash == replacement.CodeHash,
                     token, cancellationToken: CancellationToken.None);
+            await rateLimiter.ReleaseAsync(lease);
             logger.LogError("Password reset delivery failed for account {UserId}. Failure type: {FailureType}.",
                 user.Id, exception.InnerException?.GetType().Name ?? exception.GetType().Name);
             throw;

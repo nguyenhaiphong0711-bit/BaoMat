@@ -58,6 +58,7 @@ public sealed class AppCookieAuthenticationEvents(UserService users) : CookieAut
                 .Order(StringComparer.Ordinal)
                 .ToArray();
             var current = user.PermissionCodes
+                .Where(code => PermissionCodes.IsAllowedForRole(user.Role, code))
                 .Distinct(StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)
                 .ToArray();

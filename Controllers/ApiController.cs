@@ -1003,9 +1003,11 @@ public sealed class ApiController : ControllerBase
     private static ApiUserResponse ToUserResponse(User user) =>
         new(user.Id.ToString(), user.FullName, user.Email, user.Role, user.IsActive, AsUtcOffset(user.CreatedAt));
 
-    private static ApiClassResponse ToClassResponse(ClassRoom classroom) =>
+    private ApiClassResponse ToClassResponse(ClassRoom classroom) =>
         new(classroom.Id.ToString(), classroom.Name, classroom.Description, classroom.SubjectId.ToString(), classroom.TeacherId.ToString(),
-            classroom.StudentIds.Select(id => id.ToString()).ToArray(), AsUtcOffset(classroom.CreatedAt),
+            classroom.StudentIds.Where(id => !User.IsInRole(Roles.Student) ||
+                id.ToString() == User.FindFirstValue(ClaimTypes.NameIdentifier))
+                .Select(id => id.ToString()).ToArray(), AsUtcOffset(classroom.CreatedAt),
             classroom.AcademicTermId?.ToString(), classroom.EnrollmentCapacity);
 
     private static ApiSubjectResponse ToSubjectResponse(Subject subject) =>

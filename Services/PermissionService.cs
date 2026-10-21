@@ -33,7 +33,7 @@ public class PermissionService(MongoContext db)
             user.PermissionsInitialized = true;
             user.StudentPortalPermissionsInitialized = user.Role == Roles.Student;
             await db.Users.UpdateOneAsync(
-                x => x.Id == user.Id,
+                x => x.Id == user.Id && !x.PermissionsInitialized,
                 Builders<User>.Update
                     .Set(x => x.PermissionCodes, user.PermissionCodes)
                     .Set(x => x.PermissionsInitialized, true)
@@ -49,7 +49,7 @@ public class PermissionService(MongoContext db)
             grants.Add(PermissionCodes.TuitionView);
             grants.Add(PermissionCodes.TuitionPay);
             await db.Users.UpdateOneAsync(
-                x => x.Id == student.Id,
+                x => x.Id == student.Id && !x.StudentPortalPermissionsInitialized,
                 Builders<User>.Update
                     .Set(x => x.PermissionCodes, grants.ToList())
                     .Set(x => x.StudentPortalPermissionsInitialized, true));
@@ -130,15 +130,26 @@ public class PermissionService(MongoContext db)
             return false;
 
         var uniqueCodes = codes.Distinct(StringComparer.Ordinal).ToArray();
-        if (!await AreValidCodesAsync(uniqueCodes))
+        if (uniqueCodes.Any(code => !PermissionCodes.IsAllowedForRole(user.Role, code)) ||
+            !await AreValidCodesAsync(uniqueCodes))
             return false;
 
-        await db.Users.UpdateOneAsync(
-            x => x.Id == objectId,
+        var result = await db.Users.UpdateOneAsync(
+            x => x.Id == objectId && x.IsActive && x.Role == user.Role,
             Builders<User>.Update
                 .Set(x => x.PermissionCodes, uniqueCodes.ToList())
-                .Set(x => x.PermissionsInitialized, true));
-        return true;
+                .Set(x => x.PermissionsInitialized, true)
+                .Set(x => x.StudentPortalPermissionsInitialized, user.Role == Roles.Student));
+        return result.MatchedCount == 1;
+    }
+
+    public async Task<bool> AreValidForUserAsync(string userId, IReadOnlyCollection<string> codes)
+    {
+        if (!MongoDB.Bson.ObjectId.TryParse(userId, out var id)) return false;
+        var user = await db.Users.Find(x => x.Id == id && x.IsActive).FirstOrDefaultAsync();
+        return user is not null && user.Role != Roles.Admin &&
+            codes.All(code => PermissionCodes.IsAllowedForRole(user.Role, code)) &&
+            await AreValidCodesAsync(codes);
     }
 
     public async Task<bool> AreValidCodesAsync(IReadOnlyCollection<string> codes)
