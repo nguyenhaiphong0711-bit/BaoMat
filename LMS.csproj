@@ -3,12 +3,37 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);ClientApp/node_modules/**;ClientApp/dist/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="10.0.13" />
     <PackageReference Include="MongoDB.Driver" Version="3.12.0" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageReference Include="MailKit" Version="4.18.1" />
     <PackageReference Include="DotNetEnv" Version="3.2.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Remove="ClientApp/**" />
+    <None Remove="ClientApp/node_modules/**;ClientApp/dist/**" />
+    <ReactSource Include="ClientApp/src/**/*;ClientApp/index.html;ClientApp/package.json;ClientApp/package-lock.json;ClientApp/tsconfig.json;ClientApp/vite.config.ts;ClientApp/playwright.config.ts;ClientApp/e2e/**/*.ts" />
+  </ItemGroup>
+  <Target Name="InstallReact" BeforeTargets="BuildReact" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipFrontendBuild)' != 'true'"
+          Inputs="ClientApp/package.json;ClientApp/package-lock.json" Outputs="ClientApp/node_modules/.package-lock.json">
+    <Exec Command="npm ci --no-fund" WorkingDirectory="ClientApp" />
+  </Target>
+  <Target Name="BuildReact" BeforeTargets="BeforeBuild" DependsOnTargets="InstallReact" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipFrontendBuild)' != 'true'"
+          Inputs="@(ReactSource)" Outputs="ClientApp/dist/index.html">
+    <Exec Command="npm run build" WorkingDirectory="ClientApp" />
+  </Target>
+  <Target Name="PublishReact" AfterTargets="ComputeFilesToPublish" DependsOnTargets="BuildReact">
+    <ItemGroup>
+      <ReactDist Include="ClientApp/dist/**/*" />
+      <ResolvedFileToPublish Include="@(ReactDist->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot/app/%(ReactDist.RecursiveDir)%(ReactDist.Filename)%(ReactDist.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 </Project>

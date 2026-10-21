@@ -13,6 +13,7 @@ document.querySelectorAll("[data-filepond]").forEach((input) => {
     };
 
     FilePond.create(input, {
+        name: "file", // Match Request.Form.Files.GetFile("file") in UploadController.
         allowMultiple: true,
         maxFiles: 5,
         labelIdle: 'Kéo thả tệp hoặc <span class="filepond--label-action">chọn từ thiết bị</span>',

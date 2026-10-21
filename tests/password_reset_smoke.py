@@ -139,7 +139,7 @@ def main(extra_checks=None):
             with socket.socket() as probe:
                 probe.bind(('127.0.0.1', 0))
                 port = probe.getsockname()[1]
-            environment = dict(os.environ, ASPNETCORE_ENVIRONMENT='Development',
+            environment = dict(os.environ, ASPNETCORE_ENVIRONMENT='Development', Frontend__UseDevServer='false',
                                ASPNETCORE_URLS=f'http://127.0.0.1:{port}',
                                MongoDb__ConnectionString='mongodb://127.0.0.1:27017',
                                MongoDb__DatabaseName=database, DemoData__Enabled='false',

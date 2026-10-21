@@ -17,6 +17,7 @@
                 <div class="sidebar-scroll">
                 <div class="nav-caption">WORKSPACE</div>
                 <nav class="side-nav">
+                    <a href="/app/"><span class="nav-icon">◈</span>Không gian React</a>
                     <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Dashboard" ? "active" : "")" asp-controller="Dashboard" asp-action="Index"><span class="nav-icon">◫</span>Tổng quan</a>
                     @if (User.IsInRole(Roles.Admin) || User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ClassesView))
                     {

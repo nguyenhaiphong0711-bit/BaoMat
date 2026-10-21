@@ -24,7 +24,7 @@ Quản trị học vụ bổ sung `AcademicPrograms`, `ProgramCourses`, `Academi
 Dữ liệu minh họa chỉ được thêm khi chạy môi trường `Development` với `DemoData__Enabled=true`; ví dụ PowerShell: `$env:DemoData__Enabled='true'; dotnet run`. Seeder thêm tối đa 20 bản ghi mẫu cho các danh mục/nghiệp vụ chính (khoa, ngành, môn, lớp, bài học, bài tập, bài nộp, lịch, ghi danh và hóa đơn Pending), có tiền tố `DEMO`, dùng email `@example.test` và không xóa dữ liệu cũ. Các tài khoản mẫu bổ sung dùng mật khẩu `Demo@123`; chỉ bật cờ này với MongoDB local dành riêng cho phát triển, tuyệt đối không bật trong Production. Đơn giá và điểm trong dữ liệu demo không phải biểu phí hay kết quả chính thức của NEU. Các token khôi phục mật khẩu và trạng thái thanh toán thành công không được tạo giả.
 
 ## Chạy project
-1. Cài .NET 10 SDK.
+1. Cài .NET 10 SDK và Node.js 24 LTS (tối thiểu 22.12) để build/chạy giao diện React khi phát triển.
 2. Cài MongoDB local và chạy MongoDB service.
 3. Kiểm tra `appsettings.json`.
 4. Để gửi mã khôi phục mật khẩu, sao chép `.env.example` thành `.env`, sau đó cấu hình Gmail SMTP bằng **Google App Password** (không dùng mật khẩu đăng nhập Google). Bật xác minh 2 bước cho tài khoản Google, tạo App Password và điền các giá trị trong `.env`:
@@ -52,6 +52,12 @@ dotnet run
 ```
 
 Mở `http://localhost:5000`.
+
+## Giao diện React + TypeScript
+
+Sau khi pull bản mới, từ thư mục dự án chỉ cần `dotnet run`: ứng dụng tự cài dependency frontend khi cần, build React và chạy Vite cùng ASP.NET. Mở `http://localhost:5000` để vào giao diện mới. Giữ nguyên MongoDB và `.env` hiện có. Máy phát triển cần Node.js; máy chạy bản publish không cần Node.js.
+
+Bản đầu chuyển đăng nhập/OTP, dashboard, danh mục môn học và trang lớp sang React. Các nghiệp vụ còn lại tiếp tục mở trang Razor hiện có, dùng chung phiên đăng nhập. Xem [FRONTEND.md](FRONTEND.md) để biết cấu trúc Context + reducer, cách chạy, publish, kiểm thử và phạm vi chuyển đổi.
 
 ## Theo dõi học tập và thanh toán học phí
 Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệt đăng ký**. Chỉ yêu cầu được duyệt mới ghi danh sinh viên vào lớp và tạo hóa đơn. Sinh viên xem môn đang học, tín chỉ đã ghi danh và điểm trung bình các bài tập đã chấm tại **Môn học & điểm**. Điểm này chỉ là trung bình bài tập, chưa phải điểm tổng kết môn có trọng số. Mục **Học phí** hiển thị từng hóa đơn theo lớp/môn. Khi Admin cấu hình đơn giá mỗi tín chỉ trong mục **Học kỳ**, hệ thống tính hóa đơn lúc yêu cầu được duyệt; hóa đơn giữ snapshot đơn giá đó kể cả khi Admin cập nhật biểu phí sau này. Việc rút khỏi lớp đã thanh toán cần Admin xử lý do chưa tích hợp hoàn tiền.

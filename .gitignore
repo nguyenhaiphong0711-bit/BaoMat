@@ -11,3 +11,8 @@ TestResults/
 *.suo
 
 __pycache__/
+
+ClientApp/node_modules/
+ClientApp/dist/
+ClientApp/playwright-report/
+ClientApp/test-results/
