@@ -33,6 +33,7 @@ public class MongoContext
     public IMongoCollection<ClassSession> ClassSessions => _database.GetCollection<ClassSession>("ClassSessions");
     public IMongoCollection<SessionEnrollment> SessionEnrollments => _database.GetCollection<SessionEnrollment>("SessionEnrollments");
     public IMongoCollection<LearningResource> Resources => _database.GetCollection<LearningResource>("Resources");
+    public IMongoCollection<QuestionBankItem> Questions => _database.GetCollection<QuestionBankItem>("Questions");
     public IMongoCollection<PermissionMigration> PermissionMigrations => _database.GetCollection<PermissionMigration>("PermissionMigrations");
     public IMongoCollection<Permission> Permissions => _database.GetCollection<Permission>("Permissions");
     public IMongoCollection<AcademicProgram> AcademicPrograms => _database.GetCollection<AcademicProgram>("AcademicPrograms");

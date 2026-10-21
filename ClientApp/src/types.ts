@@ -145,3 +145,31 @@ export interface ResourcePage {
   page: number;
   pageSize: number;
 }
+export interface QuestionItem {
+  id: string;
+  revision: number;
+  subjectId: string;
+  subjectName: string;
+  topic: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  content: string;
+  options: { id: string; text: string }[];
+  correctOption: number;
+  explanation: string;
+  state: string;
+  isArchived: boolean;
+  editorName: string;
+  reviewerName: string;
+  reviewComment: string;
+  canEdit: boolean;
+  canSubmit: boolean;
+  canReview: boolean;
+  canPublish: boolean;
+  canArchive: boolean;
+}
+export interface QuestionPage {
+  items: QuestionItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

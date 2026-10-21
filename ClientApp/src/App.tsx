@@ -28,6 +28,7 @@ import {
 import { roleLabel } from "./types";
 
 import { Resources, ResourceDetail, ResourceEditor } from "./ResourcePages";
+import { Questions, QuestionDetail, QuestionEditor } from "./QuestionPages";
 
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
@@ -95,6 +96,9 @@ function Workspace() {
           )}
           {can(user, "resources.view") && (
             <NavLink to="/resources">Kho học liệu</NavLink>
+          )}
+          {user.role !== "Student" && can(user, "questions.view") && (
+            <NavLink to="/questions">Ngân hàng câu hỏi</NavLink>
           )}
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
@@ -173,6 +177,10 @@ export function App() {
         <Route path="resources/new" element={<ResourceEditor />} />
         <Route path="resources/:resourceId" element={<ResourceDetail />} />
         <Route path="resources/:resourceId/edit" element={<ResourceEditor />} />
+        <Route path="questions" element={<Questions />} />
+        <Route path="questions/new" element={<QuestionEditor />} />
+        <Route path="questions/:questionId" element={<QuestionDetail />} />
+        <Route path="questions/:questionId/edit" element={<QuestionEditor />} />
         <Route
           path="resources/:resourceId/versions/:version"
           element={<ResourceDetail />}

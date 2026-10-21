@@ -16,6 +16,9 @@
 | resources.view | Teacher, Student, Staff | — |
 | resources.manage | Teacher | resources.view |
 | resources.review | Staff | resources.view |
+| questions.view | Teacher, Staff | — |
+| questions.manage | Teacher | questions.view |
+| questions.review | Staff | questions.view |
 | staff.students.view | Staff | — |
 | staff.progress.view | Staff | staff.students.view |
 | classes.view | Teacher, Student | — |
@@ -47,7 +50,7 @@ Quyền tùy chỉnh chỉ bổ sung điều kiện hạn chế cho action đư�
 
 Khi khởi động bình thường, `PermissionService.InitializeAsync`:
 
-1. Upsert 21 quyền hệ thống vào collection `Permissions`, cập nhật tên/mô tả, `AllowedRoles`, `RequiredCodes`. Giữ nguyên các định nghĩa tùy chỉnh.
+1. Upsert 24 quyền hệ thống vào collection `Permissions`, cập nhật tên/mô tả, `AllowedRoles`, `RequiredCodes`. Giữ nguyên các định nghĩa tùy chỉnh.
 2. Tài khoản cũ chưa từng khởi tạo được cấp bộ quyền mặc định theo vai trò. Quyền cổng sinh viên cũ chỉ được bổ sung một lần theo cờ migration đã có.
 3. Với tài khoản đã khởi tạo, loại mã không có định nghĩa, sai vai trò, trùng hoặc thiếu quyền phụ thuộc. Giữ quyền tùy chỉnh còn hợp lệ. Không khôi phục quyền Admin đã thu hồi.
 4. Lưu Before/After theo UserId trong `PermissionMigrations` trước khi cập nhật. `Applied=true` cho biết snapshot đã được áp dụng. Snapshot không chứa mật khẩu.

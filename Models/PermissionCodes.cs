@@ -5,6 +5,9 @@ public static class PermissionCodes
     public const string ResourcesView = "resources.view";
     public const string ResourcesManage = "resources.manage";
     public const string ResourcesReview = "resources.review";
+    public const string QuestionsView = "questions.view";
+    public const string QuestionsManage = "questions.manage";
+    public const string QuestionsReview = "questions.review";
     public const string StaffStudentsView = "staff.students.view";
     public const string StaffProgressView = "staff.progress.view";
     public const string ClaimType = "lms:permission";
@@ -32,6 +35,9 @@ public static class PermissionCodes
         (ResourcesView, "Xem kho học liệu", "Kho học liệu", "Xem tài liệu đã công bố theo quyền truy cập và môn/lớp được tham gia."),
         (ResourcesManage, "Soạn và công bố học liệu", "Kho học liệu", "Quản lý tài liệu của mình trong các môn được phân công; chỉ công bố phiên bản đã được duyệt."),
         (ResourcesReview, "Duyệt học liệu trong khoa", "Kho học liệu", "Duyệt tài liệu đã gửi thuộc khoa được giao; không tự duyệt tài liệu do mình soạn."),
+        (QuestionsView, "Xem ngân hàng câu hỏi", "Ngân hàng câu hỏi", "Xem câu hỏi thuộc môn được phân công hoặc khoa được giao."),
+        (QuestionsManage, "Soạn câu hỏi", "Ngân hàng câu hỏi", "Soạn và công bố câu hỏi trắc nghiệm trong môn được phân công."),
+        (QuestionsReview, "Duyệt câu hỏi trong khoa", "Ngân hàng câu hỏi", "Duyệt câu hỏi thuộc khoa được giao; không tự duyệt câu hỏi do mình soạn."),
         (StaffStudentsView, "Xem sinh viên trong khoa", "Cán bộ quản lý", "Xem hồ sơ cơ bản của sinh viên thuộc khoa được Admin phân công."),
         (StaffProgressView, "Theo dõi học tập trong khoa", "Cán bộ quản lý", "Xem số bài nộp và điểm trung bình bài tập của sinh viên trong các lớp thuộc khoa được giao."),
         (LessonsView, "Xem bài học", "Bài học", "Sinh viên xem bài đã công bố; giáo viên xem cả bản nháp trong lớp được phân công."),
@@ -55,6 +61,7 @@ public static class PermissionCodes
     public static IReadOnlyList<string> RequiredFor(string code) => code switch
     {
         ResourcesManage or ResourcesReview => [ResourcesView],
+        QuestionsManage or QuestionsReview => [QuestionsView],
         StaffProgressView => [StaffStudentsView],
         LessonsView or AssignmentsView => [ClassesView],
         LessonsManage => [LessonsView],
@@ -84,10 +91,10 @@ public static class PermissionCodes
 
     public static IReadOnlyList<string> DefaultsForRole(string role) => role switch
     {
-        Roles.Staff => [StaffStudentsView, StaffProgressView, ResourcesView, ResourcesReview],
+        Roles.Staff => [StaffStudentsView, StaffProgressView, ResourcesView, ResourcesReview, QuestionsView, QuestionsReview],
         Roles.Teacher =>
         [
-            ResourcesView, ResourcesManage, LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
+            ResourcesView, ResourcesManage, QuestionsView, QuestionsManage, LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
             SubmissionsReview, ScheduleView, ScheduleAvailability, ScheduleManage,
             ClassesView
         ],

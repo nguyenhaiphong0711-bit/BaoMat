@@ -31,6 +31,7 @@ builder.Services.AddScoped<AcademicService>();
 builder.Services.AddScoped<StudentAcademicService>();
 builder.Services.AddScoped<StaffAcademicService>();
 builder.Services.AddScoped<ResourceService>();
+builder.Services.AddScoped<QuestionBankService>();
 builder.Services.AddScoped<VnpayPaymentService>();
 builder.Services.AddScoped<GmailEmailSender>();
 builder.Services.AddScoped<PasswordResetService>();
