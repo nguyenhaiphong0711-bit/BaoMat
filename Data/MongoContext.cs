@@ -36,6 +36,7 @@ public class MongoContext
     public IMongoCollection<QuestionBankItem> Questions => _database.GetCollection<QuestionBankItem>("Questions");
     public IMongoCollection<Quiz> Quizzes => _database.GetCollection<Quiz>("Quizzes");
     public IMongoCollection<QuizAttempt> QuizAttempts => _database.GetCollection<QuizAttempt>("QuizAttempts");
+    public IMongoCollection<SupportTicket> SupportTickets => _database.GetCollection<SupportTicket>("SupportTickets");
     public IMongoCollection<PermissionMigration> PermissionMigrations => _database.GetCollection<PermissionMigration>("PermissionMigrations");
     public IMongoCollection<Permission> Permissions => _database.GetCollection<Permission>("Permissions");
     public IMongoCollection<AcademicProgram> AcademicPrograms => _database.GetCollection<AcademicProgram>("AcademicPrograms");
@@ -76,6 +77,8 @@ public class MongoContext
         QuizAttempts.Indexes.CreateOne(new CreateIndexModel<QuizAttempt>(
             Builders<QuizAttempt>.IndexKeys.Ascending(x => x.QuizId).Ascending(x => x.StudentId),
             new CreateIndexOptions { Unique = true }));
+        SupportTickets.Indexes.CreateOne(new CreateIndexModel<SupportTicket>(
+            Builders<SupportTicket>.IndexKeys.Ascending(x => x.DepartmentId).Descending(x => x.UpdatedAt)));
         Permissions.Indexes.CreateOne(new CreateIndexModel<Permission>(
             Builders<Permission>.IndexKeys.Ascending(x => x.Code),
             new CreateIndexOptions { Unique = true }));

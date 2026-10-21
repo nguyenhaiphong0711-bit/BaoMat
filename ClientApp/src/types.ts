@@ -226,3 +226,32 @@ export interface QuizAttempt {
   }[];
   answers: number[];
 }
+export interface SupportTicket {
+  id: string;
+  revision: number;
+  subject: string;
+  category: string;
+  priority: "Low" | "Normal" | "High";
+  status: "Open" | "InProgress" | "Resolved" | "Closed";
+  studentName: string;
+  departmentName: string;
+  assignedStaffName: string;
+  assignedStaffId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  canReply: boolean;
+  canManage: boolean;
+  messages: {
+    id: string;
+    senderName: string;
+    senderRole: Role;
+    content: string;
+    sentAt: string;
+  }[];
+}
+export interface SupportPage {
+  items: SupportTicket[];
+  total: number;
+  page: number;
+  pageSize: number;
+}

@@ -16,7 +16,7 @@ def staff_checks(state):
     sid = created['id']
     staff = Web(web.base)
     api(staff, '/api/auth/login', {'email':created['email'], 'password':password})
-    assert set(api(staff, '/api/auth/me')['permissionCodes']) == {'staff.students.view', 'staff.progress.view', 'resources.view', 'resources.review', 'questions.view', 'questions.review'}
+    assert set(api(staff, '/api/auth/me')['permissionCodes']) == {'staff.students.view', 'staff.progress.view', 'resources.view', 'resources.review', 'questions.view', 'questions.review', 'support.view', 'support.manage'}
     api(staff, '/api/staff/students', expected=403)
     general = state['general']['id']
     other = api(web, '/api/departments', {'code':'STAFFOTHER','name':'Other department'}, expected=201)

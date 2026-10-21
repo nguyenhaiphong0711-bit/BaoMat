@@ -56,7 +56,7 @@ def permission_checks(state, extra_checks=None):
     records = int(mongo('print(d.PermissionMigrations.countDocuments({Applied:true}))'))
     assert records > 0
     definitions = json.loads(mongo('print(JSON.stringify(d.Permissions.find({IsSystem:true},{_id:0,Code:1,AllowedRoles:1,RequiredCodes:1}).toArray()))'))
-    assert len(definitions) == 27
+    assert len(definitions) == 30
     assert next(p for p in definitions if p['Code']=='lessons.manage')['RequiredCodes'] == ['lessons.view']
     assert next(p for p in definitions if p['Code']=='tuition.pay')['AllowedRoles'] == ['Student']
     sync()

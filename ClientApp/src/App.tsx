@@ -30,6 +30,7 @@ import { roleLabel } from "./types";
 import { Resources, ResourceDetail, ResourceEditor } from "./ResourcePages";
 import { Questions, QuestionDetail, QuestionEditor } from "./QuestionPages";
 import { Quizzes, QuizDetail, QuizEditor, QuizAttemptPage } from "./QuizPages";
+import { SupportTickets, SupportCreate, SupportDetail } from "./SupportPages";
 
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
@@ -103,6 +104,9 @@ function Workspace() {
           )}
           {user.role !== "Staff" && can(user, "quizzes.view") && (
             <NavLink to="/quizzes">Bài kiểm tra</NavLink>
+          )}
+          {user.role !== "Teacher" && can(user, "support.view") && (
+            <NavLink to="/support">Hỗ trợ người học</NavLink>
           )}
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
@@ -193,6 +197,9 @@ export function App() {
           path="quizzes/attempts/:attemptId"
           element={<QuizAttemptPage />}
         />
+        <Route path="support" element={<SupportTickets />} />
+        <Route path="support/new" element={<SupportCreate />} />
+        <Route path="support/:ticketId" element={<SupportDetail />} />
         <Route
           path="resources/:resourceId/versions/:version"
           element={<ResourceDetail />}
