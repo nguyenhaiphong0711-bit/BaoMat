@@ -21,7 +21,9 @@ Quản trị học vụ bổ sung `AcademicPrograms`, `ProgramCourses`, `Academi
 - Các trang danh sách hỗ trợ phân trang 10, 20 hoặc 50 dòng/trang và giữ bộ lọc hiện tại khi chuyển trang.
 
 ## Dữ liệu demo và phân trang
-Dữ liệu minh họa chỉ được thêm khi chạy môi trường `Development` với `DemoData__Enabled=true`; ví dụ PowerShell: `$env:DemoData__Enabled='true'; dotnet run`. Seeder thêm tối đa 20 bản ghi mẫu cho các danh mục/nghiệp vụ chính (khoa, ngành, môn, lớp, bài học, bài tập, bài nộp, lịch, ghi danh và hóa đơn Pending), có tiền tố `DEMO`, dùng email `@example.test` và không xóa dữ liệu cũ. Các tài khoản mẫu bổ sung dùng mật khẩu `Demo@123`; chỉ bật cờ này với MongoDB local dành riêng cho phát triển, tuyệt đối không bật trong Production. Đơn giá và điểm trong dữ liệu demo không phải biểu phí hay kết quả chính thức của NEU. Các token khôi phục mật khẩu và trạng thái thanh toán thành công không được tạo giả.
+Dữ liệu minh họa chỉ được thêm khi chạy môi trường `Development` với `DemoData__Enabled=true`. Seeder tạo 15 khoa/viện, 25 ngành và khoảng 50 bản ghi có liên kết cho từng nhóm nghiệp vụ chính: môn học, giảng viên, sinh viên, lớp, bài học, bài tập, bài nộp, lịch, ghi danh, hóa đơn, học liệu, câu hỏi, bài kiểm tra, yêu cầu hỗ trợ và sự kiện học tập. Tên người và danh mục kinh tế - kinh doanh được viết gần với dữ liệu thực tế để dễ trình diễn, nhưng chỉ là dữ liệu tham khảo, không phải danh mục, biểu phí hay kết quả chính thức của Đại học Kinh tế Quốc dân.
+
+Seeder dùng mã có tiền tố `DEMO`, email `@example.test`, không xóa dữ liệu cũ và có thể chạy lại mà không nhân bản. Các tài khoản bổ sung dùng mật khẩu `Demo@123`. Để nạp dữ liệu vào database Atlas đã khai báo trong `.env`, đặt `ASPNETCORE_ENVIRONMENT=Development` và `DemoData__Enabled=true`, chạy `dotnet run` một lần, dừng ứng dụng, sau đó đổi `DemoData__Enabled=false` và chạy lại. Không bật seeder khi vận hành Production. Seeder không tạo giả token khôi phục mật khẩu hoặc trạng thái thanh toán thành công.
 
 ## Chạy project
 1. Cài .NET 10 SDK và Node.js 24 LTS (tối thiểu 22.12) để build/chạy giao diện React khi phát triển.

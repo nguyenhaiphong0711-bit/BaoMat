@@ -36,7 +36,7 @@ def support_checks(state):
     request(teacher, '/api/support', form, expected=403)
     ticket = request(student, '/api/support', form, expected=201)
     tid = ticket['id']
-    assert ticket['status'] == 'Open' and ticket['studentName'] == 'Student Demo'
+    assert ticket['status'] == 'Open' and ticket['studentName'] == 'Nguyễn Hải Phong'
     assert ticket['departmentName'] != 'Other department' and ticket['assignedStaffId'] is None
     listed = api(student, '/api/support')['items'][0]
     assert listed['messages'] == []

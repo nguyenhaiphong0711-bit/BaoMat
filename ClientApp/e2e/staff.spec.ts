@@ -46,7 +46,7 @@ test("Staff React shows only assigned department students and read-only progress
     .getByRole("link", { name: "Xem tiến trình" })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Student Demo", exact: true }),
+    page.getByRole("heading", { name: "Nguyễn Hải Phong", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("cell", { name: "Regression class", exact: true }),
@@ -59,7 +59,7 @@ test("Staff React shows only assigned department students and read-only progress
   ).toHaveCount(0);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Student Demo", exact: true }),
+    page.getByRole("heading", { name: "Nguyễn Hải Phong", exact: true }),
   ).toBeVisible();
   await page.goto(`/app/staff/students/${process.env.E2E_STAFF_OUTSIDER_ID}`);
   await expect(page.getByRole("alert")).toBeVisible();

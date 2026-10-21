@@ -9,6 +9,7 @@ public static class SeedData
     {
         using var scope = provider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<MongoContext>();
+        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
         var defaultDepartment = await db.Departments.Find(x => x.Code == "GEN").FirstOrDefaultAsync();
         if (defaultDepartment is null)
         {
@@ -22,7 +23,6 @@ public static class SeedData
         }
         if (!await db.Users.Find(_ => true).AnyAsync())
         {
-            var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
             if (!environment.IsDevelopment())
             {
                 var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -31,17 +31,25 @@ public static class SeedData
                 if (string.IsNullOrWhiteSpace(email) || !System.Net.Mail.MailAddress.TryCreate(email, out _) ||
                     string.IsNullOrWhiteSpace(password) || password.Length < 12)
                     throw new InvalidOperationException("An empty production database requires Bootstrap__AdminEmail and Bootstrap__AdminPassword (at least 12 characters). Demo accounts are only created in Development.");
-                await db.Users.InsertOneAsync(new User { FullName = "Administrator", Email = email,
+                await db.Users.InsertOneAsync(new User { FullName = "Quản trị hệ thống", Email = email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), Role = Roles.Admin });
             }
             else
             {
                 await db.Users.InsertManyAsync(new[] {
-                new User { FullName="Administrator", Email="admin@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Admin@123"), Role=Roles.Admin },
-                new User { FullName="Teacher Demo", Email="teacher@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Teacher@123"), Role=Roles.Teacher },
-                new User { FullName="Student Demo", Email="student@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Student@123"), Role=Roles.Student }
+                new User { FullName="Quản trị hệ thống", Email="admin@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Admin@123"), Role=Roles.Admin },
+                new User { FullName="Trần Minh Quân", Email="teacher@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Teacher@123"), Role=Roles.Teacher },
+                new User { FullName="Nguyễn Hải Phong", Email="student@lms.com", PasswordHash=BCrypt.Net.BCrypt.HashPassword("Student@123"), Role=Roles.Student }
                 });
             }
+        }
+
+        // Rename only untouched legacy demo accounts; never overwrite a name edited by the user.
+        if (environment.IsDevelopment())
+        {
+            await RenameLegacyDemoUser(db, "admin@lms.com", "Administrator", "Quản trị hệ thống");
+            await RenameLegacyDemoUser(db, "teacher@lms.com", "Teacher Demo", "Trần Minh Quân");
+            await RenameLegacyDemoUser(db, "student@lms.com", "Student Demo", "Nguyễn Hải Phong");
         }
 
         var generalSubject = await db.Subjects.Find(x => x.Code == "GEN101").FirstOrDefaultAsync();
@@ -214,4 +222,8 @@ public static class SeedData
             }
         }
     }
+    private static Task RenameLegacyDemoUser(MongoContext db, string email, string oldName, string newName) =>
+        db.Users.UpdateOneAsync(
+            x => x.Email == email && x.FullName == oldName,
+            Builders<User>.Update.Set(x => x.FullName, newName));
 }
