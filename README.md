@@ -78,6 +78,9 @@ Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệ
 `Vnpay__BankCode=MB` chỉ chọn ngân hàng/ngả thanh toán MB trên VNPAY; nó không đăng ký số tài khoản nhận tiền. Tài khoản nhận thanh toán phải được liên kết với merchant bởi VNPAY. Production yêu cầu Payment URL, Return URL và IPN URL là HTTPS tuyệt đối; IPN phải truy cập được từ VNPAY. Nếu chưa cấu hình merchant, học phí vẫn xem được nhưng không thể tạo yêu cầu thanh toán. Callback chỉ đánh dấu hóa đơn đã trả khi chữ ký, merchant, mã tham chiếu, số tiền, mã phản hồi và trạng thái giao dịch đều hợp lệ. Cần kiểm thử với tài khoản sandbox và URL public được VNPAY cho phép trước khi bật thanh toán thật.
 
 ## Deploy lên Render bằng Docker
+
+Hướng dẫn tạo backup và phục hồi MongoDB bằng MongoDB Database Tools nằm tại [OPERATIONS.md](OPERATIONS.md). Script đọc cấu hình hiện có trong `.env`, không lưu URI vào repository và bắt buộc xác nhận riêng trước khi restore.
+
 1. Đẩy project lên GitHub và tạo một **Web Service** trên Render, chọn repository này và runtime **Docker**. Render sẽ dùng `Dockerfile` ở thư mục gốc.
 2. Tạo MongoDB database có thể truy cập từ Render (ví dụ MongoDB Atlas), sau đó thêm các Environment Variables cho Web Service:
 

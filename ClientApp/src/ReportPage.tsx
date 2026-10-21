@@ -5,9 +5,15 @@ import type { LearningReport } from "./types";
 
 export function LearningReports() {
   const { user } = useAuth();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const allowed = !!user && can(user, "reports.view");
+  const query = new URLSearchParams();
+  if (from) query.set("from", from);
+  if (to) query.set("to", to);
+  const suffix = query.size ? `?${query}` : "";
   const result = useRemote<LearningReport>(
-    allowed ? "/api/reports/learning" : null,
+    allowed ? `/api/reports/learning${suffix}` : null,
   );
   if (!allowed)
     return <Alert message="Bạn chưa được cấp quyền xem báo cáo học tập." />;
@@ -37,6 +43,11 @@ export function LearningReports() {
           </p>
         </div>
       </div>
+      <section className="panel filters">
+        <label>Từ ngày<input aria-label="Từ ngày" type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
+        <label>Đến ngày<input aria-label="Đến ngày" type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label>
+        <a className="button secondary" href={`/api/reports/learning.csv${suffix}`}>Xuất CSV</a>
+      </section>
       <div className="stats">
         {report.metrics.map((metric) => (
           <article className="panel stat" key={metric.key}>
@@ -88,3 +99,4 @@ export function LearningReports() {
     </>
   );
 }
+import { useState } from "react";

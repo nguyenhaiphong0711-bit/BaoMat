@@ -118,7 +118,9 @@ public sealed record ApiTeachingAssignmentRequest
 }
 
 /// <summary>A lesson returned to an authorized class member.</summary>
-public sealed record ApiLessonResponse(string Id, string ClassId, string Title, string Content, bool IsPublished, DateTimeOffset CreatedAt, IReadOnlyList<ApiFileResponse> Attachments);
+public sealed record ApiLessonResponse(string Id, string ClassId, string Title, string Content, bool IsPublished,
+    DateTimeOffset CreatedAt, IReadOnlyList<ApiFileResponse> Attachments, bool IsCompleted = false,
+    DateTimeOffset? CompletedAt = null);
 
 /// <summary>Fields required to create or update a lesson.</summary>
 public sealed record ApiLessonRequest

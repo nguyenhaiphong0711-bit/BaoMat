@@ -63,6 +63,35 @@ function RemoteError({
     </div>
   ) : null;
 }
+
+function LessonCompletionButton({ lesson }: { lesson: Lesson }) {
+  const [completed, setCompleted] = useState(lesson.isCompleted);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function toggle() {
+    setPending(true);
+    setError(null);
+    try {
+      await api(`/api/lessons/${lesson.id}/completion`, {
+        method: completed ? "DELETE" : "PUT",
+      });
+      setCompleted((value) => !value);
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <div className="actions">
+      <button className="button secondary" disabled={pending} onClick={toggle}>
+        {pending ? "Đang lưu…" : completed ? "Đánh dấu chưa hoàn thành" : "Đánh dấu đã hoàn thành"}
+      </button>
+      {completed && <span className="badge">Đã hoàn thành</span>}
+      {error && <Alert message={error} />}
+    </div>
+  );
+}
 export function Dashboard() {
   const { user } = useAuth();
   const classes = useRemote<ClassRoom[]>(
@@ -632,6 +661,9 @@ export function ClassDetail() {
                 </summary>
                 <p className="plain-content">{l.content}</p>
                 <Files files={l.attachments} />
+                {user.role === "Student" && (
+                  <LessonCompletionButton lesson={l} />
+                )}
                 {user.role !== "Student" && can(user, "lessons.manage") && (
                   <div className="actions">
                     <Link to={`/lessons/${l.id}/edit`}>Chỉnh sửa bài học</Link>

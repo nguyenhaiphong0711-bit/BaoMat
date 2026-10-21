@@ -35,6 +35,9 @@ test("role-scoped reports render student progress and department metrics without
     await expect(
       student.getByText("VISIBLE OWN EVENT", { exact: true }),
     ).toBeVisible();
+    await expect(student.getByRole("link", { name: "Xuất CSV" })).toBeVisible();
+    await student.getByLabel("Từ ngày").fill("2999-01-01");
+    await expect(student.getByText("VISIBLE OWN EVENT", { exact: true })).toHaveCount(0);
 
     await login(
       staff,

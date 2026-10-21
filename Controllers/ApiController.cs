@@ -23,6 +23,7 @@ public sealed class ApiController : ControllerBase
     private readonly SubjectService _subjects;
     private readonly DepartmentService _departments;
     private readonly LessonService _lessons;
+    private readonly LessonProgressService _lessonProgress;
     private readonly AssignmentService _assignments;
     private readonly SubmissionService _submissions;
     private readonly ActivityLogService _activityLogs;
@@ -37,6 +38,7 @@ public sealed class ApiController : ControllerBase
         SubjectService subjects,
         DepartmentService departments,
         LessonService lessons,
+        LessonProgressService lessonProgress,
         AssignmentService assignments,
         SubmissionService submissions,
         ActivityLogService activityLogs,
@@ -50,6 +52,7 @@ public sealed class ApiController : ControllerBase
         _subjects = subjects;
         _departments = departments;
         _lessons = lessons;
+        _lessonProgress = lessonProgress;
         _assignments = assignments;
         _submissions = submissions;
         _activityLogs = activityLogs;
@@ -537,7 +540,10 @@ public sealed class ApiController : ControllerBase
             return Forbid();
 
         var lessons = await _lessons.GetByClassAsync(classObjectId, user.Role == Roles.Student);
-        return Ok(lessons.Select(ToLessonResponse));
+        if (user.Role != Roles.Student) return Ok(lessons.Select(x => ToLessonResponse(x)));
+        var progress = await _lessonProgress.GetAsync(user.Id, lessons.Select(x => x.Id));
+        return Ok(lessons.Select(x => ToLessonResponse(x,
+            progress.TryGetValue(x.Id, out var completedAt) ? completedAt : null)));
     }
 
     [HttpGet("lessons/{id}")]
@@ -560,7 +566,41 @@ public sealed class ApiController : ControllerBase
             return Forbid();
         }
 
-        return Ok(ToLessonResponse(lesson));
+        DateTime? progress = null;
+        if (user.Role == Roles.Student)
+        {
+            var completions = await _lessonProgress.GetAsync(user.Id, [lesson.Id]);
+            if (completions.TryGetValue(lesson.Id, out var completedAt)) progress = completedAt;
+        }
+        return Ok(ToLessonResponse(lesson, progress));
+    }
+
+    [HttpPut("lessons/{id}/completion")]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.LessonsView)]
+    public async Task<IActionResult> CompleteLesson(string id)
+    {
+        var lesson = await _lessons.GetAsync(id);
+        if (lesson is null) return NotFound();
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+        if (!lesson.IsPublished || lesson.IsArchived || !await _classes.HasAccessAsync(lesson.ClassId.ToString(), user))
+            return Forbid();
+        var completedAt = await _lessonProgress.CompleteAsync(lesson, user);
+        return Ok(new { isCompleted = true, completedAt = AsUtcOffset(completedAt) });
+    }
+
+    [HttpDelete("lessons/{id}/completion")]
+    [Authorize(Roles = Roles.Student), RequirePermission(PermissionCodes.LessonsView)]
+    public async Task<IActionResult> ReopenLesson(string id)
+    {
+        var lesson = await _lessons.GetAsync(id);
+        if (lesson is null) return NotFound();
+        var user = await GetCurrentUserAsync();
+        if (user is null) return Unauthorized();
+        if (!lesson.IsPublished || lesson.IsArchived || !await _classes.HasAccessAsync(lesson.ClassId.ToString(), user))
+            return Forbid();
+        await _lessonProgress.ReopenAsync(lesson, user);
+        return NoContent();
     }
 
     [HttpPost("classes/{classId}/lessons")]
@@ -1065,8 +1105,10 @@ public sealed class ApiController : ControllerBase
     private static ApiDepartmentResponse ToDepartmentResponse(Department department) =>
         new(department.Id.ToString(), department.Code, department.Name, department.Description, AsUtcOffset(department.CreatedAt));
 
-    private static ApiLessonResponse ToLessonResponse(Lesson lesson) =>
-        new(lesson.Id.ToString(), lesson.ClassId.ToString(), lesson.Title, lesson.Content, lesson.IsPublished, AsUtcOffset(lesson.CreatedAt), ToFileResponses(lesson.Attachments));
+    private static ApiLessonResponse ToLessonResponse(Lesson lesson, DateTime? completedAt = null) =>
+        new(lesson.Id.ToString(), lesson.ClassId.ToString(), lesson.Title, lesson.Content, lesson.IsPublished,
+            AsUtcOffset(lesson.CreatedAt), ToFileResponses(lesson.Attachments), completedAt.HasValue,
+            completedAt.HasValue ? AsUtcOffset(completedAt.Value) : null);
 
     private static ApiAssignmentResponse ToAssignmentResponse(Assignment assignment) =>
         new(assignment.Id.ToString(), assignment.ClassId.ToString(), assignment.Title, assignment.Description,

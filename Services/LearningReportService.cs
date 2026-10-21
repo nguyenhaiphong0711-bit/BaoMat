@@ -16,7 +16,7 @@ public sealed class LearningEventService(MongoContext db)
 
 public sealed class LearningReportService(MongoContext db)
 {
-    public async Task<LearningReportResponse> BuildAsync(User user)
+    public async Task<LearningReportResponse> BuildAsync(User user, DateTime? from = null, DateTime? toExclusive = null)
     {
         var metrics = new List<ReportMetric>();
         FilterDefinition<LearningEvent> eventFilter;
@@ -59,6 +59,7 @@ public sealed class LearningReportService(MongoContext db)
             metrics.Add(new("classes", "Lớp đang tham gia", classes.Count, "lớp"));
             metrics.Add(new("assignments", "Bài tập đã công bố", assignmentIds.Count, "bài"));
             metrics.Add(new("submissions", "Bài đã nộp", await db.Submissions.CountDocumentsAsync(x => x.StudentId == user.Id && assignmentIds.Contains(x.AssignmentId)), "bài"));
+            metrics.Add(new("lessonsCompleted", "Bài học đã hoàn thành", await db.LessonCompletions.CountDocumentsAsync(x => x.StudentId == user.Id), "bài"));
             metrics.Add(new("quizAverage", "Điểm kiểm tra trung bình", Average(attempts), "điểm"));
             eventFilter = Builders<LearningEvent>.Filter.Or(
                 Builders<LearningEvent>.Filter.Eq(x => x.StudentId, user.Id),
@@ -82,6 +83,8 @@ public sealed class LearningReportService(MongoContext db)
         }
         else throw new UnauthorizedAccessException();
 
+        if (from.HasValue) eventFilter &= Builders<LearningEvent>.Filter.Gte(x => x.OccurredAt, from.Value);
+        if (toExclusive.HasValue) eventFilter &= Builders<LearningEvent>.Filter.Lt(x => x.OccurredAt, toExclusive.Value);
         var tickets = await db.SupportTickets.Find(supportFilter).ToListAsync();
         var groups = new[] { TicketStatuses.Open, TicketStatuses.InProgress, TicketStatuses.Resolved, TicketStatuses.Closed }
             .Select(status => new ReportGroup(status, status switch { TicketStatuses.Open => "Mới", TicketStatuses.InProgress => "Đang xử lý", TicketStatuses.Resolved => "Đã giải quyết", _ => "Đã đóng" }, tickets.Count(x => x.Status == status))).ToArray();

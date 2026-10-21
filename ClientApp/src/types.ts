@@ -43,6 +43,8 @@ export interface Lesson {
   title: string;
   content: string;
   isPublished: boolean;
+  isCompleted: boolean;
+  completedAt: string | null;
 }
 export interface Assignment {
   classId: string;

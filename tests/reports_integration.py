@@ -25,7 +25,11 @@ def report_checks(state):
     assert student_report['scopeName'] == 'Tiến độ của tôi'
     assert 'VISIBLE OWN EVENT' in [x['summary'] for x in student_report['recentEvents']]
     assert 'HIDDEN OUTSIDE EVENT' not in [x['summary'] for x in student_report['recentEvents']]
-    assert {x['key'] for x in student_report['metrics']} >= {'classes','assignments','submissions','quizAverage','openSupport'}
+    assert {x['key'] for x in student_report['metrics']} >= {'classes','lessonsCompleted','assignments','submissions','quizAverage','openSupport'}
+    assert api(student, '/api/reports/learning?from=2999-01-01')['recentEvents'] == []
+    csv_status, csv_body = student.request('/api/reports/learning.csv?from=2020-01-01', method='GET')
+    assert csv_status == 200 and 'Chỉ số' in csv_body
+    api(student, '/api/reports/learning?from=2025-02-01&to=2025-01-01', expected=400)
     teacher_report = api(teacher, '/api/reports/learning')
     assert teacher_report['scopeName'] == 'Các lớp đang phụ trách'
     assert all(x['summary'] != 'HIDDEN OUTSIDE EVENT' for x in teacher_report['recentEvents'])

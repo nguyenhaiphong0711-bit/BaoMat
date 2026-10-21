@@ -26,6 +26,7 @@ async function write(page: Page, url: string, method: string, data: object) {
 test("React learning lifecycle: draft, publish, files, submit, grade, resubmit and archive with server permissions", async ({
   browser,
 }) => {
+  test.setTimeout(45_000);
   test.skip(
     !process.env.E2E_CLASS_ID,
     "Requires an isolated integration database.",
@@ -110,6 +111,17 @@ test("React learning lifecycle: draft, publish, files, submit, grade, resubmit a
     await expect(
       student.getByRole("link", { name: "lesson-notes.txt" }),
     ).toBeVisible();
+    // Keep this lifecycle repeatable after an interrupted local test run.
+    await write(student, `/api/lessons/${lesson.id}/completion`, "DELETE", {});
+    await student.reload();
+    await student.getByText("React lifecycle lesson", { exact: false }).click();
+    await student.getByRole("button", { name: "Đánh dấu đã hoàn thành" }).click();
+    await expect(student.getByText("Đã hoàn thành", { exact: true })).toBeVisible();
+    const completed = await (await student.request.get(`/api/lessons/${lesson.id}`)).json();
+    expect(completed.isCompleted).toBe(true);
+    expect(completed.completedAt).toBeTruthy();
+    await student.getByRole("button", { name: "Đánh dấu chưa hoàn thành" }).click();
+    await expect(student.getByRole("button", { name: "Đánh dấu đã hoàn thành" })).toBeVisible();
     expect((await student.request.get(lessonFile)).status()).toBe(200);
     expect(
       (

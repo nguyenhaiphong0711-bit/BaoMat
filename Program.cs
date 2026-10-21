@@ -21,6 +21,7 @@ builder.Services.AddScoped<ClassService>();
 builder.Services.AddScoped<SubjectService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<LessonService>();
+builder.Services.AddScoped<LessonProgressService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<SubmissionService>();
 builder.Services.AddScoped<ActivityLogService>();

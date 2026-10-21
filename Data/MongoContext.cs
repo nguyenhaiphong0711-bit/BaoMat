@@ -26,6 +26,7 @@ public class MongoContext
     public IMongoCollection<Subject> Subjects => _database.GetCollection<Subject>("Subjects");
     public IMongoCollection<Department> Departments => _database.GetCollection<Department>("Departments");
     public IMongoCollection<Lesson> Lessons => _database.GetCollection<Lesson>("Lessons");
+    public IMongoCollection<LessonCompletion> LessonCompletions => _database.GetCollection<LessonCompletion>("LessonCompletions");
     public IMongoCollection<Assignment> Assignments => _database.GetCollection<Assignment>("Assignments");
     public IMongoCollection<Submission> Submissions => _database.GetCollection<Submission>("Submissions");
     public IMongoCollection<ActivityLog> ActivityLogs => _database.GetCollection<ActivityLog>("ActivityLogs");
@@ -74,6 +75,9 @@ public class MongoContext
             Builders<SessionEnrollment>.IndexKeys
                 .Ascending(x => x.SessionId)
                 .Ascending(x => x.StudentId),
+            new CreateIndexOptions { Unique = true }));
+        LessonCompletions.Indexes.CreateOne(new CreateIndexModel<LessonCompletion>(
+            Builders<LessonCompletion>.IndexKeys.Ascending(x => x.LessonId).Ascending(x => x.StudentId),
             new CreateIndexOptions { Unique = true }));
         QuizAttempts.Indexes.CreateOne(new CreateIndexModel<QuizAttempt>(
             Builders<QuizAttempt>.IndexKeys.Ascending(x => x.QuizId).Ascending(x => x.StudentId),
