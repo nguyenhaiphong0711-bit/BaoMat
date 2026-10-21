@@ -207,9 +207,11 @@ Thêm `--implicit-tls` để kiểm tra TLS trên cổng 465 (cổng phải đan
 
 ## Phân quyền và triển khai an toàn
 
+Đã bổ sung [kho học liệu dùng chung](RESOURCES.md): nhiều môn dùng một tài liệu, metadata nguồn/giấy phép, phiên bản và gửi duyệt/phê duyệt/công bố. Tài khoản cũ cần Admin cấp các quyền kho mới trước khi dùng.
+
 Đã bổ sung [cán bộ quản lý theo khoa](STAFF.md): Admin tạo tài khoản Staff và giao khoa; cán bộ dùng React để xem sinh viên và báo cáo học tập trong phạm vi được giao.
 
-Xem [PERMISSIONS.md](PERMISSIONS.md) để biết ma trận 18 quyền, quy tắc quyền phụ thuộc và quá trình tự đồng bộ collection `Permissions`/quyền tài khoản khi khởi động. Bản cập nhật giữ quyền tùy chỉnh hợp lệ và quyền đã thu hồi, lưu đối chiếu trong `PermissionMigrations`.
+Xem [PERMISSIONS.md](PERMISSIONS.md) để biết ma trận 21 quyền, quy tắc quyền phụ thuộc và quá trình tự đồng bộ collection `Permissions`/quyền tài khoản khi khởi động. Bản cập nhật giữ quyền tùy chỉnh hợp lệ và quyền đã thu hồi, lưu đối chiếu trong `PermissionMigrations`.
 
 Admin quản trị tài khoản/học vụ; Teacher chỉ quản lý lớp được phân công; Student chỉ nộp bài, xem điểm và học phí của chính mình. Quyền chức năng phải đồng thời phù hợp với role và quyền truy cập tài nguyên; gán nhầm quyền Teacher cho Student không cấp quyền chấm bài. Chi tiết phạm vi kiểm thử và các giới hạn còn lại ở [PROJECT_REVIEW.md](PROJECT_REVIEW.md).
 

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using LMS.Data;
 using LMS.Models;
 using MongoDB.Bson;
@@ -38,7 +39,7 @@ public class FileStorageService
         ObjectId ownerId,
         ObjectId classId,
         string purpose,
-        ObjectId? assignmentId = null)
+        ObjectId? assignmentId = null, string? sha256 = null)
     {
         if (file.Length is <= 0 or > MaxFileSize)
             throw new InvalidOperationException("Tệp phải có dung lượng từ 1 byte đến 25 MB.");
@@ -57,6 +58,7 @@ public class FileStorageService
         };
         if (assignmentId.HasValue)
             metadata["assignmentId"] = assignmentId.Value;
+        if (sha256 is not null) metadata["sha256"] = sha256;
 
         await using var stream = file.OpenReadStream();
         var id = await _db.FileBucket.UploadFromStreamAsync(
@@ -71,6 +73,22 @@ public class FileStorageService
             Length = file.Length,
             ContentType = contentType
         };
+    }
+
+    // Deduplicate within the uploader's repository, without disclosing another user's files.
+    public async Task<StoredFileReference> UploadResourceAsync(IFormFile file, ObjectId ownerId)
+    {
+        if (file.Length is <= 0 or > MaxFileSize || !AllowedContentTypes.ContainsKey(Path.GetExtension(file.FileName)))
+            throw new InvalidOperationException("Tệp không hợp lệ: tối đa 25 MB và phải thuộc định dạng tài liệu được hỗ trợ.");
+        await using var stream = file.OpenReadStream();
+        var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream));
+        var filter = Builders<GridFSFileInfo>.Filter.Eq("metadata.ownerId", ownerId) &
+            Builders<GridFSFileInfo>.Filter.Eq("metadata.purpose", "shared-resource") &
+            Builders<GridFSFileInfo>.Filter.Eq("metadata.sha256", hash);
+        var existing = await _db.FileBucket.Find(filter).FirstOrDefaultAsync();
+        return existing is null
+            ? await UploadAsync(file, ownerId, ObjectId.Empty, "shared-resource", sha256: hash)
+            : ToReference(existing);
     }
 
     public async Task<IReadOnlyList<StoredFileReference>?> ValidateStagedFilesAsync(
@@ -120,7 +138,8 @@ public class FileStorageService
 
     public async Task DeleteIfUnreferencedAsync(ObjectId id)
     {
-        if (await _db.Lessons.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync() ||
+        if (await _db.Resources.Find(x => x.Versions.Any(v => v.Files.Any(file => file.Id == id))).AnyAsync() ||
+            await _db.Lessons.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync() ||
             await _db.Assignments.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync() ||
             await _db.Submissions.Find(x => x.Attachments.Any(file => file.Id == id)).AnyAsync())
         {

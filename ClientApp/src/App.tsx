@@ -27,6 +27,8 @@ import {
 } from "./StaffPages";
 import { roleLabel } from "./types";
 
+import { Resources, ResourceDetail, ResourceEditor } from "./ResourcePages";
+
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
   const location = useLocation();
@@ -90,6 +92,9 @@ function Workspace() {
           )}
           {user.role === "Staff" && can(user, "staff.students.view") && (
             <NavLink to="/staff/students">Sinh viên trong khoa</NavLink>
+          )}
+          {can(user, "resources.view") && (
+            <NavLink to="/resources">Kho học liệu</NavLink>
           )}
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
@@ -163,6 +168,14 @@ export function App() {
         <Route
           path="staff/students/:studentId"
           element={<StaffStudentProgress />}
+        />
+        <Route path="resources" element={<Resources />} />
+        <Route path="resources/new" element={<ResourceEditor />} />
+        <Route path="resources/:resourceId" element={<ResourceDetail />} />
+        <Route path="resources/:resourceId/edit" element={<ResourceEditor />} />
+        <Route
+          path="resources/:resourceId/versions/:version"
+          element={<ResourceDetail />}
         />
         <Route path="subjects" element={<Subjects />} />
         <Route path="classes" element={<Classes />} />

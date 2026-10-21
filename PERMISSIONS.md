@@ -13,6 +13,9 @@
 
 | Mã quyền | Vai trò được gán | Quyền cần có trước |
 |---|---|---|
+| resources.view | Teacher, Student, Staff | — |
+| resources.manage | Teacher | resources.view |
+| resources.review | Staff | resources.view |
 | staff.students.view | Staff | — |
 | staff.progress.view | Staff | staff.students.view |
 | classes.view | Teacher, Student | — |
@@ -34,6 +37,8 @@
 
 `schedule.manage` hiện cho giáo viên hủy buổi học thuộc lớp được phân công. Tạo/xếp lịch vẫn dành cho Admin; tên và mô tả quyền đã được sửa để phản ánh điều này.
 
+Ba quyền kho học liệu mới cần được Admin cấp cho tài khoản đã có; không tự cấp lại/bổ sung vào bộ quyền đã tùy chỉnh. Xem [RESOURCES.md](RESOURCES.md).
+
 Màn hình Admin → Phân quyền chỉ hiển thị quyền phù hợp vai trò. Chọn quyền thao tác tự chọn đủ quyền xem phụ thuộc; bỏ quyền xem sẽ bỏ các quyền phụ thuộc. Backend từ chối biểu mẫu giả mạo thiếu quyền cần thiết, không tự thêm quyền khi lưu.
 
 Quyền tùy chỉnh chỉ bổ sung điều kiện hạn chế cho action được ánh xạ, không vượt qua Authorize/RequirePermission hay phạm vi tài nguyên. Thêm một mã vào database không tự tạo chức năng mới. Các bản ghi tùy chỉnh cũ mặc định cho Teacher/Student; trường AllowedRoles có thể hạn chế thêm, và RequiredCodes xác định quyền phụ thuộc.
@@ -42,7 +47,7 @@ Quyền tùy chỉnh chỉ bổ sung điều kiện hạn chế cho action đư�
 
 Khi khởi động bình thường, `PermissionService.InitializeAsync`:
 
-1. Upsert 18 quyền hệ thống vào collection `Permissions`, cập nhật tên/mô tả, `AllowedRoles`, `RequiredCodes`. Giữ nguyên các định nghĩa tùy chỉnh.
+1. Upsert 21 quyền hệ thống vào collection `Permissions`, cập nhật tên/mô tả, `AllowedRoles`, `RequiredCodes`. Giữ nguyên các định nghĩa tùy chỉnh.
 2. Tài khoản cũ chưa từng khởi tạo được cấp bộ quyền mặc định theo vai trò. Quyền cổng sinh viên cũ chỉ được bổ sung một lần theo cờ migration đã có.
 3. Với tài khoản đã khởi tạo, loại mã không có định nghĩa, sai vai trò, trùng hoặc thiếu quyền phụ thuộc. Giữ quyền tùy chỉnh còn hợp lệ. Không khôi phục quyền Admin đã thu hồi.
 4. Lưu Before/After theo UserId trong `PermissionMigrations` trước khi cập nhật. `Applied=true` cho biết snapshot đã được áp dụng. Snapshot không chứa mật khẩu.

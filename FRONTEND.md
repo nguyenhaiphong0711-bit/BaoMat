@@ -20,6 +20,7 @@ Lỗi `npm` không tồn tại: cài Node.js rồi mở lại VS Code/Terminal �
 
 - Đăng nhập, yêu cầu OTP và đặt lại mật khẩu.
 - Dashboard theo tài khoản, số lớp thực và danh mục môn học thực.
+- Kho học liệu dùng chung: soạn nháp, liên kết nhiều môn, tệp/đường dẫn, duyệt, công bố, lịch sử và lưu trữ; xem `RESOURCES.md`.
 - Cán bộ quản lý: dashboard, tìm kiếm/phân trang sinh viên trong khoa và báo cáo học tập chỉ đọc; xem `STAFF.md`.
 - Danh mục môn học: tìm kiếm, lọc khoa, phân trang; Admin thêm/sửa/xóa qua API.
 - Danh sách lớp theo phạm vi của người dùng và thông tin lớp.
@@ -42,6 +43,7 @@ ClientApp/
   src/Pages.tsx      Dashboard, môn học, lớp và nội dung lớp
   src/LearningPages.tsx  Biểu mẫu bài học/bài tập, nộp bài và chấm điểm
   src/StaffPages.tsx  Dashboard, sinh viên và tiến trình trong khoa của cán bộ
+  src/ResourcePages.tsx  Kho học liệu, biểu mẫu, duyệt và phiên bản
   src/types.ts      Kiểu dữ liệu TypeScript
   e2e/              Kiểm thử Chromium bằng Playwright
 ```

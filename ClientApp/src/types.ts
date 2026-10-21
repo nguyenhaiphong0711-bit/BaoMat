@@ -104,3 +104,44 @@ export interface StaffProgress {
     averageGrade: number | null;
   }[];
 }
+
+export interface ResourceItem {
+  id: string;
+  revision: number;
+  version: number;
+  title: string;
+  description: string;
+  category: string;
+  authorName: string;
+  source: string;
+  license: string;
+  usageTerms: string;
+  access: "Subjects" | "School";
+  externalUrl: string;
+  subjectIds: string[];
+  subjectNames: string[];
+  files: Attachment[];
+  state: string;
+  isArchived: boolean;
+  canEdit: boolean;
+  canReview: boolean;
+  canPublish: boolean;
+  canSubmit: boolean;
+  canArchive: boolean;
+  reviewComment: string;
+  history: {
+    number: number;
+    title: string;
+    state: string;
+    createdAt: string;
+    reviewerName: string;
+    reviewedAt: string | null;
+    reviewComment: string;
+  }[];
+}
+export interface ResourcePage {
+  items: ResourceItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
