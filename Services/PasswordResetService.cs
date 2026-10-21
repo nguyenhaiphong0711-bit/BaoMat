@@ -19,6 +19,12 @@ public sealed class PasswordResetService(
 
     public async Task RequestCodeAsync(string email, CancellationToken cancellationToken)
     {
+        try { emailSender.EnsureConfigured(); }
+        catch (EmailDeliveryException exception)
+        {
+            logger.LogError("{ConfigurationError}", exception.Message);
+            throw;
+        }
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var user = await db.Users.Find(x => x.Email == normalizedEmail && x.IsActive).FirstOrDefaultAsync(cancellationToken);
         if (user is null)
@@ -26,6 +32,8 @@ public sealed class PasswordResetService(
 
         var now = DateTime.UtcNow;
         var token = await db.PasswordResetTokens.Find(x => x.UserId == user.Id).FirstOrDefaultAsync(cancellationToken);
+        if (token is { DeliveryPending: true } && token.ExpiresAt > now)
+            return;
         if (token is not null && now - token.LastSentAt < RequestCooldown)
             return;
         if (token is not null &&
@@ -50,23 +58,50 @@ public sealed class PasswordResetService(
             LastSentAt = now,
             RequestWindowStartedAt = windowStartedAt,
             RequestCount = requestCount,
+            DeliveryPending = true,
             FailedAttempts = 0
         };
 
-        await db.PasswordResetTokens.ReplaceOneAsync(
-            x => x.UserId == user.Id,
-            replacement,
-            new ReplaceOptions { IsUpsert = true },
-            cancellationToken);
+        // Reserve the send atomically so concurrent requests cannot bypass the cooldown.
+        if (token is null)
+        {
+            try { await db.PasswordResetTokens.InsertOneAsync(replacement, cancellationToken: cancellationToken); }
+            catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            { return; }
+        }
+        else
+        {
+            var reserved = await db.PasswordResetTokens.ReplaceOneAsync(
+                x => x.Id == token.Id && x.CodeHash == token.CodeHash && x.LastSentAt == token.LastSentAt,
+                replacement, cancellationToken: cancellationToken);
+            if (reserved.ModifiedCount != 1)
+                return;
+        }
 
         try
         {
             await emailSender.SendPasswordResetCodeAsync(user.Email, code, cancellationToken);
         }
-        catch (EmailDeliveryException exception)
+        catch (Exception exception) when (exception is EmailDeliveryException or OperationCanceledException)
         {
-            logger.LogError(exception, "Password reset code could not be sent for account {UserId}.", user.Id);
+            // Restore the previous usable code, without overwriting a newer request.
+            if (token is null)
+                await db.PasswordResetTokens.DeleteOneAsync(
+                    x => x.Id == replacement.Id && x.CodeHash == replacement.CodeHash,
+                    CancellationToken.None);
+            else
+                await db.PasswordResetTokens.ReplaceOneAsync(
+                    x => x.Id == replacement.Id && x.CodeHash == replacement.CodeHash,
+                    token, cancellationToken: CancellationToken.None);
+            logger.LogError("Password reset delivery failed for account {UserId}. Failure type: {FailureType}.",
+                user.Id, exception.InnerException?.GetType().Name ?? exception.GetType().Name);
+            throw;
         }
+
+        await db.PasswordResetTokens.UpdateOneAsync(
+            x => x.Id == replacement.Id && x.CodeHash == replacement.CodeHash,
+            Builders<PasswordResetToken>.Update.Set(x => x.DeliveryPending, false),
+            cancellationToken: CancellationToken.None);
     }
 
     public async Task<bool> ResetPasswordAsync(
@@ -82,20 +117,20 @@ public sealed class PasswordResetService(
 
         var token = await db.PasswordResetTokens.Find(x => x.UserId == user.Id).FirstOrDefaultAsync(cancellationToken);
         var now = DateTime.UtcNow;
-        if (token is null || token.ExpiresAt <= now || token.FailedAttempts >= MaximumFailedAttempts)
+        if (token is null || token.DeliveryPending || token.ExpiresAt <= now || token.FailedAttempts >= MaximumFailedAttempts)
             return false;
 
         if (!BCrypt.Net.BCrypt.Verify(code, token.CodeHash))
         {
             await db.PasswordResetTokens.UpdateOneAsync(
-                x => x.Id == token.Id && x.ExpiresAt > now && x.FailedAttempts < MaximumFailedAttempts,
+                x => x.Id == token.Id && x.CodeHash == token.CodeHash && !x.DeliveryPending && x.ExpiresAt > now && x.FailedAttempts < MaximumFailedAttempts,
                 Builders<PasswordResetToken>.Update.Inc(x => x.FailedAttempts, 1),
                 cancellationToken: cancellationToken);
             return false;
         }
 
         var consumed = await db.PasswordResetTokens.FindOneAndDeleteAsync(
-            x => x.Id == token.Id && x.ExpiresAt > now && x.FailedAttempts < MaximumFailedAttempts,
+            x => x.Id == token.Id && x.CodeHash == token.CodeHash && !x.DeliveryPending && x.ExpiresAt > now && x.FailedAttempts < MaximumFailedAttempts,
             cancellationToken: cancellationToken);
         if (consumed is null)
             return false;

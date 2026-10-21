@@ -32,13 +32,18 @@ Dữ liệu minh họa chỉ được thêm khi chạy môi trường `Developme
    | Key | Value |
    |---|---|
    | `Email__Host` | `smtp.gmail.com` (mặc định) |
-   | `Email__Port` | `587` |
+   | `Email__Port` | `587` (STARTTLS) hoặc `465` (TLS ngay khi kết nối) |
+   | `Email__TimeoutSeconds` | `20`, cho phép từ 1 đến 120 giây |
    | `Email__Username` | Địa chỉ Gmail dùng gửi thư |
    | `Email__AppPassword` | Google App Password 16 ký tự |
    | `Email__SenderEmail` | (Không bắt buộc) mặc định dùng `Email__Username` |
    | `Email__SenderName` | (Không bắt buộc) mặc định `LearnSpace` |
 
    Ứng dụng tự đọc `.env` khi khởi động; biến môi trường đã được hệ điều hành/Render thiết lập sẽ được ưu tiên. Không đưa App Password vào `appsettings.json`, source control, ảnh chụp hoặc log. `.env` được loại trừ khỏi Git và Docker build; trên Render hãy khai báo cùng các biến này trong **Environment** của Web Service.
+
+   Khi Google hiển thị App Password thành từng nhóm, ứng dụng tự bỏ khoảng trắng cho `smtp.gmail.com`. Nếu SMTP không xác thực được, TLS/DNS/kết nối lỗi hoặc quá thời gian chờ, trang quên mật khẩu trả lỗi 503 và cho phép thử lại; không chuyển sang màn hình nhập một OTP chưa gửi được. Mã gửi thành công trước đó được giữ lại nếu lượt gửi mới thất bại. Chỉ mã đã được SMTP chấp nhận và kích hoạt trong cơ sở dữ liệu mới được dùng để đặt lại mật khẩu. SMTP chấp nhận thư chưa bảo đảm thư vào Inbox; cần kiểm tra cả Spam và chính sách tài khoản gửi.
+
+   Trên máy triển khai, phải có quyền kết nối outbound tới `smtp.gmail.com:587` hoặc `:465`; nếu nhà cung cấp chặn SMTP, cần cấu hình mạng phù hợp hoặc tích hợp dịch vụ email qua HTTPS. Không tắt kiểm tra chứng chỉ TLS. Nhập tài khoản gửi và App Password trong biến môi trường của máy chạy ứng dụng hoặc `.env` local được Git bỏ qua, rồi khởi động lại ứng dụng. Không gửi App Password trong chat hoặc commit vào Git.
 5. Chạy:
 
 ```bash
@@ -145,7 +150,7 @@ API dùng cookie authentication giống MVC, không phát hành bearer/JWT token
 ## Đánh giá authentication/authorization
 - Đã có: BCrypt password hashing; lockout theo tài khoản sau số lần sai cấu hình; ghi log login; cookie `HttpOnly`, `SameSite=Lax`, hết hạn 8 giờ và sliding expiration; role authorization; kiểm tra membership/teacher ownership ở server; antiforgery cho form MVC; cookie production chỉ gửi qua HTTPS.
 - Đã bổ sung: API login/me/logout; API trả status JSON `401`/`403`; mỗi request xác thực lại trạng thái active và role hiện tại để vô hiệu cookie cũ sau khi khóa tài khoản/đổi role; logout MVC chuyển sang POST có antiforgery (không còn logout bằng GET).
-- Chưa đầy đủ cho production: mật khẩu mới bắt buộc tối thiểu 8 ký tự nhưng chưa có MFA, xác minh email, luồng quên/đổi mật khẩu, hoặc giới hạn tốc độ theo IP; lockout hiện chủ yếu theo tài khoản và có thể bị race khi login đồng thời. Thông báo lỗi đăng nhập đã dùng nội dung chung để hạn chế dò tài khoản. Hiện phù hợp demo/bài tập hơn là yêu cầu production có rủi ro cao.
+- Chưa đầy đủ cho production: mật khẩu mới bắt buộc tối thiểu 8 ký tự nhưng chưa có MFA, xác minh email hoặc giới hạn tốc độ theo IP; đã có đặt lại mật khẩu qua OTP email; lockout hiện chủ yếu theo tài khoản và có thể bị race khi login đồng thời. Thông báo lỗi đăng nhập đã dùng nội dung chung để hạn chế dò tài khoản. Hiện phù hợp demo/bài tập hơn là yêu cầu production có rủi ro cao.
 - Quyền chức năng được lưu trong `Permissions` và `Users.PermissionCodes`; Admin có thể gán quyền hệ thống cho từng giáo viên/sinh viên, thêm/xóa mã quyền tùy chỉnh và ánh xạ một quyền tùy chỉnh vào một cặp MVC `Controller/Action`. Việc ẩn menu/nút chỉ là UX; policy/filter server-side vẫn chặn truy cập URL trực tiếp. Admin được bypass quyền chức năng, còn role vẫn xác định loại tài khoản và giới hạn các hành động miền (ví dụ nộp bài chỉ dành cho Student).
 - Seed chạy migration bổ sung cho hồ sơ cũ chưa được khởi tạo: gán khoa/chương trình mặc định và liên kết lớp cũ với học kỳ phù hợp. Nếu đã có học kỳ nhưng không có học kỳ active, seed không tự kích hoạt lại học kỳ đã đóng; Admin cần chọn học kỳ đang mở.
 - Ghi danh cập nhật `Classes.StudentIds` và `StudentRegistrations` bằng các thao tác MongoDB riêng, không phải transaction đa document; khi chạy MongoDB replica set có thể cân nhắc transaction nếu cần bảo đảm nguyên tử tuyệt đối.
@@ -183,3 +188,13 @@ Controllers / Models / Services / Data / Views / wwwroot.
 
 `Services` được dùng để giữ business logic để Controller không quá dài.
 "# BaoMat" 
+
+## Kiểm thử hồi quy quên mật khẩu
+
+`tests/password_reset_smoke.py` dùng ứng dụng thật, MongoDB và SMTP local có chứng chỉ TLS tin cậy tạm thời; không gửi email ra Internet. Cần Python 3, OpenSSL, Docker và container MongoDB local tên `baomat-mongo`. Mỗi lần chạy tạo database riêng rồi xóa database đó khi kết thúc.
+
+```bash
+python3 tests/password_reset_smoke.py --dotnet /path/to/dotnet --dll /path/to/LMS.dll
+```
+
+Thêm `--implicit-tls` để kiểm tra TLS trên cổng 465 (cổng phải đang trống), `--missing-config` để kiểm tra thiếu cấu hình, hoặc `--untrusted-tls` để xác nhận chứng chỉ không tin cậy bị từ chối. Tùy chọn `--postman` chạy thêm collection hiện có bằng Newman 6.2.3 và báo lỗi nếu script của collection thất bại. Xem `PROJECT_REVIEW.md` về các vấn đề còn tồn tại trong collection và phạm vi rà soát.

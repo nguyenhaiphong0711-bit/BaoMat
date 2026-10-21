@@ -4,6 +4,7 @@ public sealed class EmailSettings
 {
     public string Host { get; set; } = "smtp.gmail.com";
     public int Port { get; set; } = 587;
+    public int TimeoutSeconds { get; set; } = 20;
     public string Username { get; set; } = "";
     public string AppPassword { get; set; } = "";
     public string SenderEmail { get; set; } = "";

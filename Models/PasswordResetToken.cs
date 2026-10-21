@@ -7,6 +7,7 @@ public class PasswordResetToken
 {
     [BsonId] public ObjectId Id { get; set; }
     public ObjectId UserId { get; set; }
+    public bool DeliveryPending { get; set; }
     public string CodeHash { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; }

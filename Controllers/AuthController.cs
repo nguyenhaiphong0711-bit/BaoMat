@@ -55,7 +55,16 @@ public class AuthController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        await _passwordReset.RequestCodeAsync(model.Email, cancellationToken);
+        try
+        {
+            await _passwordReset.RequestCodeAsync(model.Email, cancellationToken);
+        }
+        catch (EmailDeliveryException)
+        {
+            ModelState.AddModelError("", "Hiện chưa thể gửi email khôi phục mật khẩu. Vui lòng thử lại sau hoặc liên hệ quản trị viên.");
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return View(model);
+        }
         ViewBag.Message = "Nếu email thuộc một tài khoản đang hoạt động, mã OTP sẽ được gửi đến hộp thư đó. Mã có hiệu lực trong 10 phút.";
         return View("ResetPassword", new ResetPasswordViewModel { Email = model.Email.Trim() });
     }

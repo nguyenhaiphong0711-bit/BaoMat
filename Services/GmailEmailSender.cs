@@ -11,16 +11,24 @@ public sealed class GmailEmailSender(Microsoft.Extensions.Options.IOptions<Email
 {
     private readonly EmailSettings settings = options.Value;
 
-    public async Task SendPasswordResetCodeAsync(string recipient, string code, CancellationToken cancellationToken)
+    public void EnsureConfigured()
     {
         if (string.IsNullOrWhiteSpace(settings.Host) ||
             settings.Port is < 1 or > 65535 ||
+            settings.TimeoutSeconds is < 1 or > 120 ||
             string.IsNullOrWhiteSpace(settings.Username) ||
             string.IsNullOrWhiteSpace(settings.AppPassword))
         {
-            throw new EmailDeliveryException("Gmail SMTP configuration is incomplete.");
+            throw new EmailDeliveryException("SMTP configuration is incomplete. Check Email__Host, Email__Port, Email__Username, Email__AppPassword and Email__TimeoutSeconds.");
         }
+    }
 
+    public async Task SendPasswordResetCodeAsync(string recipient, string code, CancellationToken cancellationToken)
+    {
+        EnsureConfigured();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromSeconds(settings.TimeoutSeconds));
+        var deliveryToken = timeout.Token;
         try
         {
             var message = new MimeMessage();
@@ -33,6 +41,7 @@ public sealed class GmailEmailSender(Microsoft.Extensions.Options.IOptions<Email
             var escapedCode = System.Net.WebUtility.HtmlEncode(code);
             message.Body = new BodyBuilder
             {
+                TextBody = $"Mã xác nhận đặt lại mật khẩu LearnSpace: {code}. Mã có hiệu lực trong 10 phút và chỉ sử dụng một lần.",
                 HtmlBody = $"""
                     <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#253858;line-height:1.6">
                       <h2>Đặt lại mật khẩu LearnSpace</h2>
@@ -43,14 +52,27 @@ public sealed class GmailEmailSender(Microsoft.Extensions.Options.IOptions<Email
                     """
             }.ToMessageBody();
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync(settings.Host, settings.Port, SecureSocketOptions.StartTls, cancellationToken);
-            await client.AuthenticateAsync(settings.Username, settings.AppPassword, cancellationToken);
-            await client.SendAsync(message, cancellationToken);
-            await client.DisconnectAsync(true, cancellationToken);
+            using var client = new SmtpClient { Timeout = settings.TimeoutSeconds * 1000 };
+            var security = settings.Port == 465 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
+            await client.ConnectAsync(settings.Host.Trim(), settings.Port, security, deliveryToken);
+            // Google displays App Passwords in groups separated by spaces.
+            var password = settings.Host.Trim().Equals("smtp.gmail.com", StringComparison.OrdinalIgnoreCase)
+                ? settings.AppPassword.Replace(" ", "").Trim()
+                : settings.AppPassword;
+            await client.AuthenticateAsync(settings.Username.Trim(), password, deliveryToken);
+            await client.SendAsync(message, deliveryToken);
+            // SMTP has accepted DATA at this point. A QUIT failure must not invalidate the delivered OTP.
+            try { await client.DisconnectAsync(true, deliveryToken); }
+            catch (Exception exception) when (exception is IOException or SmtpProtocolException or SmtpCommandException or MailKit.ServiceNotConnectedException or OperationCanceledException) { }
+        }
+        catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new EmailDeliveryException("SMTP delivery timed out.", exception);
         }
         catch (Exception exception) when (
-            exception is SmtpCommandException or
+            exception is MailKit.Security.AuthenticationException or
+            MailKit.Security.SslHandshakeException or
+            SmtpCommandException or
             SmtpProtocolException or
             MailKit.ServiceNotAuthenticatedException or
             MailKit.ServiceNotConnectedException or
