@@ -20,6 +20,13 @@ import {
   AssignmentWork,
 } from "./LearningPages";
 
+import {
+  StaffDashboard,
+  StaffStudents,
+  StaffStudentProgress,
+} from "./StaffPages";
+import { roleLabel } from "./types";
+
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
   const location = useLocation();
@@ -81,6 +88,9 @@ function Workspace() {
               {user.role === "Student" ? "Lớp của tôi" : "Lớp học"}
             </NavLink>
           )}
+          {user.role === "Staff" && can(user, "staff.students.view") && (
+            <NavLink to="/staff/students">Sinh viên trong khoa</NavLink>
+          )}
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
           </NavLink>
@@ -118,13 +128,7 @@ function Workspace() {
           </span>
           <div>
             <strong>{user.fullName}</strong>
-            <small>
-              {user.role === "Admin"
-                ? "Quản trị viên"
-                : user.role === "Teacher"
-                  ? "Giảng viên"
-                  : "Sinh viên"}
-            </small>
+            <small>{roleLabel[user.role]}</small>
           </div>
         </div>
         <Alert message={logoutError} />
@@ -154,7 +158,12 @@ export function App() {
       <Route path="login" element={<Login />} />
       <Route path="forgot-password" element={<PasswordRecovery />} />
       <Route element={<Workspace />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Home />} />
+        <Route path="staff/students" element={<StaffStudents />} />
+        <Route
+          path="staff/students/:studentId"
+          element={<StaffStudentProgress />}
+        />
         <Route path="subjects" element={<Subjects />} />
         <Route path="classes" element={<Classes />} />
         <Route path="classes/:id" element={<ClassDetail />} />
@@ -181,4 +190,9 @@ export function App() {
       </Route>
     </Routes>
   );
+}
+
+function Home() {
+  const { user } = useAuth();
+  return user?.role === "Staff" ? <StaffDashboard /> : <Dashboard />;
 }

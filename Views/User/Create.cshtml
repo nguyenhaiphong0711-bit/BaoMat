@@ -27,9 +27,11 @@
     <select asp-for="Role">
         <option value="Admin">Quản trị viên</option>
         <option value="Teacher">Giảng viên</option>
+        <option value="Staff">Cán bộ quản lý</option>
         <option value="Student">Học viên</option>
     </select>
 
+    <p class="muted">Cán bộ mới chưa được xem dữ liệu. Sau khi tạo, vào Phân quyền / hồ sơ để giao khoa quản lý.</p>
     <div class="action-row"><button>Tạo tài khoản</button><a class="btn btn-ghost" asp-action="Index">Hủy</a></div>
 </form>
 

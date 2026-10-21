@@ -20,6 +20,7 @@ Lỗi `npm` không tồn tại: cài Node.js rồi mở lại VS Code/Terminal �
 
 - Đăng nhập, yêu cầu OTP và đặt lại mật khẩu.
 - Dashboard theo tài khoản, số lớp thực và danh mục môn học thực.
+- Cán bộ quản lý: dashboard, tìm kiếm/phân trang sinh viên trong khoa và báo cáo học tập chỉ đọc; xem `STAFF.md`.
 - Danh mục môn học: tìm kiếm, lọc khoa, phân trang; Admin thêm/sửa/xóa qua API.
 - Danh sách lớp theo phạm vi của người dùng và thông tin lớp.
 - Bài học: tạo, sửa, lưu nháp, công bố, lưu trữ và đính kèm tệp bằng React. Giáo viên có thể giữ/bỏ tệp khi sửa; tối đa 5 tệp, 25 MB/tệp. Sinh viên chỉ tải được tệp của bài đã công bố trong lớp của mình.
@@ -40,6 +41,7 @@ ClientApp/
   src/AuthPages.tsx  Đăng nhập và khôi phục mật khẩu
   src/Pages.tsx      Dashboard, môn học, lớp và nội dung lớp
   src/LearningPages.tsx  Biểu mẫu bài học/bài tập, nộp bài và chấm điểm
+  src/StaffPages.tsx  Dashboard, sinh viên và tiến trình trong khoa của cán bộ
   src/types.ts      Kiểu dữ liệu TypeScript
   e2e/              Kiểm thử Chromium bằng Playwright
 ```

@@ -1,17 +1,20 @@
 # Phân quyền và đồng bộ MongoDB
 
-Ứng dụng hiện có ba vai trò: Admin, Teacher, Student. Vai trò giới hạn loại thao tác; quyền chức năng giới hạn chức năng được dùng; backend tiếp tục kiểm tra lớp, chủ bài nộp và trạng thái công bố. Cấp một quyền không cho phép đọc lớp hoặc bài nộp của người khác.
+Ứng dụng hiện có bốn vai trò: Admin, Teacher, Student, Staff. Vai trò giới hạn loại thao tác; quyền chức năng giới hạn chức năng được dùng; backend tiếp tục kiểm tra lớp, chủ bài nộp và trạng thái công bố. Cấp một quyền không cho phép đọc lớp hoặc bài nộp của người khác.
 
 | Vai trò | Phạm vi |
 |---|---|
 | Admin | Quản lý tài khoản, quyền, khoa/ngành, môn/lớp, phân công, duyệt đăng ký và xếp lịch. Có toàn quyền qua vai trò; không cần gán từng quyền. |
 | Teacher | Xem lớp được phân công; quản lý bài học/bài tập, chấm bài trong lớp đó; đăng ký giờ có thể dạy và hủy buổi học mình phụ trách. Không tạo tài khoản, tự mở lớp hoặc xếp lịch. |
+| Staff | Xem hồ sơ và tổng hợp học tập của sinh viên trong khoa được Admin giao. Không có khoa thì không được xem dữ liệu. Xem [STAFF.md](STAFF.md). |
 | Student | Xem lớp đã tham gia và nội dung đã công bố; nộp/xem bài của mình; xem tiến trình, học phí, thanh toán và đăng ký học của bản thân. Không chấm điểm hoặc xem bài nộp của bạn khác. |
 
 ## Quyền chức năng hiện có
 
 | Mã quyền | Vai trò được gán | Quyền cần có trước |
 |---|---|---|
+| staff.students.view | Staff | — |
+| staff.progress.view | Staff | staff.students.view |
 | classes.view | Teacher, Student | — |
 | lessons.view | Teacher, Student | classes.view |
 | lessons.manage | Teacher | lessons.view |
@@ -39,7 +42,7 @@ Quyền tùy chỉnh chỉ bổ sung điều kiện hạn chế cho action đư�
 
 Khi khởi động bình thường, `PermissionService.InitializeAsync`:
 
-1. Upsert 16 quyền hệ thống vào collection `Permissions`, cập nhật tên/mô tả, `AllowedRoles`, `RequiredCodes`. Giữ nguyên các định nghĩa tùy chỉnh.
+1. Upsert 18 quyền hệ thống vào collection `Permissions`, cập nhật tên/mô tả, `AllowedRoles`, `RequiredCodes`. Giữ nguyên các định nghĩa tùy chỉnh.
 2. Tài khoản cũ chưa từng khởi tạo được cấp bộ quyền mặc định theo vai trò. Quyền cổng sinh viên cũ chỉ được bổ sung một lần theo cờ migration đã có.
 3. Với tài khoản đã khởi tạo, loại mã không có định nghĩa, sai vai trò, trùng hoặc thiếu quyền phụ thuộc. Giữ quyền tùy chỉnh còn hợp lệ. Không khôi phục quyền Admin đã thu hồi.
 4. Lưu Before/After theo UserId trong `PermissionMigrations` trước khi cập nhật. `Applied=true` cho biết snapshot đã được áp dụng. Snapshot không chứa mật khẩu.
@@ -69,6 +72,6 @@ python tests/permission_integration.py --dotnet /path/to/dotnet --dll /path/to/L
 
 Runner dùng database Mongo tạm, kiểm thử bảo mật hiện có, sửa trực tiếp quyền trong database thử nghiệm, tài khoản cũ thiếu trường, giữ quyền thu hồi/tùy chỉnh, snapshot và tính lặp lại của migration; kiểm thử trình duyệt cho quy tắc chọn quyền và luồng học tập React.
 
-Vai trò cán bộ quản lý và phạm vi quản lý theo khoa/chương trình chưa được bổ sung ở lượt chuẩn hóa ba vai trò hiện có này. Cần xây luồng nghiệp vụ và kiểm thử phạm vi dữ liệu tương ứng trước khi cấp thêm vai trò đó.
+Vai trò Staff đã được bổ sung với phạm vi một khoa và các báo cáo chỉ đọc. Xem [STAFF.md](STAFF.md) để cấu hình; phạm vi nhiều khoa/chương trình và quy trình xử lý hỗ trợ chưa triển khai.
 
-Kết quả kiểm tra bản này: build .NET 0 lỗi/0 cảnh báo; 12/12 ca Chromium và 33 nhóm hồi quy đạt. Database cloud `LMS_Cloud_Dev` đã đồng bộ 16 định nghĩa, kiểm tra 3 tài khoản không còn quyền sai vai trò/phụ thuộc; 2 snapshot cập nhật được lưu. Đây là dữ liệu cloud, không xác nhận database trên máy cá nhân đã cập nhật trước khi chạy bản mới.
+Kết quả kiểm tra bản chuẩn hóa trước khi thêm Staff: build .NET 0 lỗi/0 cảnh báo; 12/12 ca Chromium và 33 nhóm hồi quy đạt. Database cloud `LMS_Cloud_Dev` đã đồng bộ 16 định nghĩa, kiểm tra 3 tài khoản không còn quyền sai vai trò/phụ thuộc; 2 snapshot cập nhật được lưu. Đây là dữ liệu cloud, không xác nhận database trên máy cá nhân đã cập nhật trước khi chạy bản mới.

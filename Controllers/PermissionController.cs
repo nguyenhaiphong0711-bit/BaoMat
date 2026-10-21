@@ -18,7 +18,7 @@ public class PermissionController(
     public async Task<IActionResult> Index(string? userId)
     {
         var eligibleUsers = (await users.GetAllAsync())
-            .Where(user => user.Role is Roles.Teacher or Roles.Student)
+            .Where(user => user.Role is Roles.Teacher or Roles.Student or Roles.Staff)
             .ToList();
         var selected = eligibleUsers.FirstOrDefault(user => user.Id.ToString() == userId)
             ?? eligibleUsers.FirstOrDefault();

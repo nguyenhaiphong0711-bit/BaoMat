@@ -77,6 +77,17 @@
                         </nav>
                     }
                 </section>
+                <section class="permission-account-group">
+                    <div class="permission-group-heading"><h3>Cán bộ quản lý</h3></div>
+                    <nav class="permission-user-list" aria-label="Danh sách cán bộ quản lý">
+                        @foreach (var account in Model.Users.Where(x => x.Role == LMS.Models.Roles.Staff))
+                        {
+                            <a class="permission-user @(account.Id == Model.SelectedUser.Id ? "active" : "")" asp-action="Index" asp-route-userId="@account.Id">
+                                <span class="permission-user-info"><strong>@account.FullName</strong><small>@account.Email</small></span>
+                            </a>
+                        }
+                    </nav>
+                </section>
             </div>
         </section>
     </aside>
@@ -128,6 +139,18 @@
                         </script>
                     </div>
                 }
+                else if (Model.SelectedUser.Role == LMS.Models.Roles.Staff)
+                {
+                    <label asp-for="Assignment.DepartmentId">Khoa được giao quản lý</label>
+                    <select asp-for="Assignment.DepartmentId">
+                        <option value="">Chưa phân công — không được xem dữ liệu sinh viên</option>
+                        @foreach (var department in Model.Departments)
+                        {
+                            <option value="@department.Id">@department.Code · @department.Name</option>
+                        }
+                    </select>
+                    <p class="muted">Cán bộ chỉ xem hồ sơ và tiến trình thuộc khoa này. Bỏ phân công sẽ thu hồi phạm vi truy cập.</p>
+                }
                 else
                 {
                     <div class="form-grid">
@@ -167,7 +190,7 @@
                         }
                     </fieldset>
                 }
-                <p class="muted">Chọn quyền thao tác sẽ chọn kèm quyền xem cần thiết. Bỏ quyền xem sẽ bỏ các quyền thao tác phụ thuộc. Quyền chỉ có hiệu lực trong lớp được phân công hoặc tham gia.</p>
+                <p class="muted">Chọn quyền thao tác sẽ chọn kèm quyền xem cần thiết. Bỏ quyền xem sẽ bỏ các quyền thao tác phụ thuộc. Quyền chỉ có hiệu lực trong lớp hoặc khoa được phân công.</p>
                 <div class="action-row"><button type="submit">Lưu quyền và hồ sơ</button></div>
                 <script>
                     {

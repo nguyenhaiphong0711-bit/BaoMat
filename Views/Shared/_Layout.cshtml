@@ -27,6 +27,10 @@
                     {
                         <a class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Schedule" ? "active" : "")" asp-controller="Schedule" asp-action="Index"><span class="nav-icon">◷</span>Lịch học</a>
                     }
+                    @if (User.IsInRole(Roles.Staff) && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.StaffStudentsView))
+                    {
+                        <a href="/app/staff/students"><span class="nav-icon">◫</span>Sinh viên trong khoa</a>
+                    }
                     @if (User.IsInRole(Roles.Teacher) && User.HasClaim(PermissionCodes.ClaimType, PermissionCodes.ScheduleAvailability))
                     {
                         <a class="@(ViewContext.RouteData.Values["action"]?.ToString() == "Availability" ? "active" : "")" asp-controller="Schedule" asp-action="Availability"><span class="nav-icon">◷</span>Giờ có thể dạy</a>

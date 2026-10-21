@@ -1,4 +1,4 @@
-export type Role = "Admin" | "Teacher" | "Student";
+export type Role = "Admin" | "Teacher" | "Student" | "Staff";
 export interface Identity {
   id: string;
   fullName: string;
@@ -70,4 +70,37 @@ export interface Submission {
   teacherComment: string;
   submittedAt: string;
   gradedAt: string | null;
+}
+
+export const roleLabel: Record<Role, string> = {
+  Admin: "Quản trị viên",
+  Teacher: "Giảng viên",
+  Student: "Sinh viên",
+  Staff: "Cán bộ quản lý",
+};
+export interface StaffStudent {
+  id: string;
+  fullName: string;
+  email: string;
+  programName: string;
+  currentSemester: number;
+  isActive: boolean;
+}
+export interface StaffStudentsPage {
+  departmentName: string;
+  items: StaffStudent[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+export interface StaffProgress {
+  student: StaffStudent;
+  courses: {
+    className: string;
+    subjectName: string;
+    assignmentCount: number;
+    submittedCount: number;
+    gradedCount: number;
+    averageGrade: number | null;
+  }[];
 }

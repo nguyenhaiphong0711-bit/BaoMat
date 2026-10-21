@@ -80,7 +80,7 @@ public class UserService
     public async Task<bool> CreateAsync(CreateUserViewModel vm)
     {
         if (string.IsNullOrWhiteSpace(vm.FullName) ||
-            !new[] { Roles.Admin, Roles.Teacher, Roles.Student }.Contains(vm.Role, StringComparer.Ordinal))
+            !new[] { Roles.Admin, Roles.Teacher, Roles.Student, Roles.Staff }.Contains(vm.Role, StringComparer.Ordinal))
             return false;
         var email = vm.Email.Trim().ToLowerInvariant();
         if (await _db.Users.Find(x => x.Email == email).AnyAsync()) return false;
@@ -200,6 +200,22 @@ public class UserService
         var user = await _db.Users.Find(x => x.Id == userId && x.IsActive).FirstOrDefaultAsync();
         if (user is null || user.Role == Roles.Admin)
             return false;
+
+        if (user.Role == Roles.Staff)
+        {
+            ObjectId? departmentId = null;
+            if (!string.IsNullOrWhiteSpace(model.DepartmentId))
+            {
+                if (!ObjectId.TryParse(model.DepartmentId, out var parsed) ||
+                    !await _db.Departments.Find(x => x.Id == parsed && !x.IsArchived).AnyAsync()) return false;
+                departmentId = parsed;
+            }
+            var result = await _db.Users.UpdateOneAsync(x => x.Id == userId && x.IsActive && x.Role == Roles.Staff,
+                Builders<User>.Update.Set(x => x.DepartmentId, departmentId)
+                    .Set(x => x.ProgramId, (ObjectId?)null).Set(x => x.TeachingSubjectIds, new List<ObjectId>())
+                    .Set(x => x.AcademicProfileInitialized, true));
+            return result.MatchedCount == 1;
+        }
 
         if (user.Role == Roles.Teacher)
         {

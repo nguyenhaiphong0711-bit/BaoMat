@@ -30,7 +30,7 @@ public sealed record ApiCreateUserRequest
     [Required, StringLength(128, MinimumLength = 8)]
     public required string Password { get; init; }
 
-    [Required, RegularExpression("^(Admin|Teacher|Student)$")]
+    [Required, RegularExpression("^(Admin|Teacher|Student|Staff)$")]
     public required string Role { get; init; }
 }
 

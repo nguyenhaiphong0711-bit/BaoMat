@@ -25,7 +25,7 @@ public class PermissionService(MongoContext db)
                     .Set(x => x.IsSystem, true)
                     .Set(x => x.ControllerName, "")
                     .Set(x => x.ActionName, "")
-                    .Set(x => x.AllowedRoles, new[] { Roles.Teacher, Roles.Student }.Where(role => PermissionCodes.DefaultsForRole(role).Contains(definition.Code)).ToList())
+                    .Set(x => x.AllowedRoles, new[] { Roles.Teacher, Roles.Student, Roles.Staff }.Where(role => PermissionCodes.DefaultsForRole(role).Contains(definition.Code)).ToList())
                     .Set(x => x.RequiredCodes, PermissionCodes.RequiredFor(definition.Code).ToList()),
                 new UpdateOptions { IsUpsert = true });
         }

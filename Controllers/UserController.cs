@@ -13,7 +13,7 @@ namespace LMS.Controllers;
                 x.Email.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
         }
         if (!string.IsNullOrWhiteSpace(filter.Role) &&
-            new[] { Roles.Admin, Roles.Teacher, Roles.Student }.Contains(filter.Role, StringComparer.OrdinalIgnoreCase))
+            new[] { Roles.Admin, Roles.Teacher, Roles.Student, Roles.Staff }.Contains(filter.Role, StringComparer.OrdinalIgnoreCase))
             users = users.Where(x => x.Role.Equals(filter.Role, StringComparison.OrdinalIgnoreCase)).ToList();
         if (!string.IsNullOrWhiteSpace(filter.Status) && bool.TryParse(filter.Status, out var isActive))
             users = users.Where(x => x.IsActive == isActive).ToList();

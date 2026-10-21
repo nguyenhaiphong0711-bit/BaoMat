@@ -15,7 +15,7 @@
     <input name="Query" value="@filter.Query" placeholder="Tìm họ tên hoặc email..." />
     <select name="Role">
         <option value="">Tất cả vai trò</option>
-        @foreach (var role in new[] { LMS.Models.Roles.Admin, LMS.Models.Roles.Teacher, LMS.Models.Roles.Student })
+        @foreach (var role in new[] { LMS.Models.Roles.Admin, LMS.Models.Roles.Teacher, LMS.Models.Roles.Student, LMS.Models.Roles.Staff })
         {
             <option value="@role" selected="@(filter.Role == role)">@role</option>
         }
@@ -45,7 +45,7 @@
                     <td>@x.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy")</td>
                     <td>
                         <div class="action-row">
-                            @if (x.Role is LMS.Models.Roles.Teacher or LMS.Models.Roles.Student)
+                            @if (x.Role is LMS.Models.Roles.Teacher or LMS.Models.Roles.Student or LMS.Models.Roles.Staff)
                             {
                                 <a class="btn btn-secondary small" asp-controller="Permission" asp-action="Index" asp-route-userId="@x.Id">Phân quyền / hồ sơ</a>
                             }

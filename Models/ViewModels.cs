@@ -37,7 +37,7 @@ public class CreateUserViewModel
     [Required, StringLength(120, MinimumLength = 2)] public string FullName { get; set; } = "";
     [Required, EmailAddress, StringLength(254)] public string Email { get; set; } = "";
     [Required, MinLength(8), StringLength(128), DataType(DataType.Password)] public string Password { get; set; } = "";
-    [Required, RegularExpression("^(Admin|Teacher|Student)$")] public string Role { get; set; } = Roles.Student;
+    [Required, RegularExpression("^(Admin|Teacher|Student|Staff)$")] public string Role { get; set; } = Roles.Student;
 }
 
 public class CreateClassViewModel
@@ -184,7 +184,7 @@ public class UserPermissionViewModel
 {
     [Required] public string UserId { get; set; } = "";
     public List<string> PermissionCodes { get; set; } = new();
-    public string DepartmentId { get; set; } = "";
+    public string? DepartmentId { get; set; }
     public string ProgramId { get; set; } = "";
     [Range(1, 20)] public int CurrentSemester { get; set; } = 1;
     public List<string> TeachingSubjectIds { get; set; } = new();

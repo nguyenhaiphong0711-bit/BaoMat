@@ -2,6 +2,8 @@ namespace LMS.Models;
 
 public static class PermissionCodes
 {
+    public const string StaffStudentsView = "staff.students.view";
+    public const string StaffProgressView = "staff.progress.view";
     public const string ClaimType = "lms:permission";
     public const string PolicyPrefix = "Permission:";
 
@@ -24,6 +26,8 @@ public static class PermissionCodes
 
     public static IReadOnlyList<(string Code, string Name, string Category, string Description)> SystemPermissions { get; } =
     [
+        (StaffStudentsView, "Xem sinh viên trong khoa", "Cán bộ quản lý", "Xem hồ sơ cơ bản của sinh viên thuộc khoa được Admin phân công."),
+        (StaffProgressView, "Theo dõi học tập trong khoa", "Cán bộ quản lý", "Xem số bài nộp và điểm trung bình bài tập của sinh viên trong các lớp thuộc khoa được giao."),
         (LessonsView, "Xem bài học", "Bài học", "Sinh viên xem bài đã công bố; giáo viên xem cả bản nháp trong lớp được phân công."),
         (LessonsManage, "Quản lý bài học", "Bài học", "Tạo, sửa và lưu trữ bài học trong lớp được phụ trách."),
         (AssignmentsView, "Xem bài tập", "Bài tập", "Sinh viên xem bài đã công bố; giáo viên xem cả bản nháp trong lớp được phân công."),
@@ -44,6 +48,7 @@ public static class PermissionCodes
 
     public static IReadOnlyList<string> RequiredFor(string code) => code switch
     {
+        StaffProgressView => [StaffStudentsView],
         LessonsView or AssignmentsView => [ClassesView],
         LessonsManage => [LessonsView],
         AssignmentsManage or SubmissionsSubmit or SubmissionsReview => [AssignmentsView],
@@ -56,7 +61,7 @@ public static class PermissionCodes
     // Only remove invalid grants; never silently add permissions that an Admin revoked.
     public static List<string> EffectiveFor(string role, IEnumerable<string> grants, IEnumerable<Permission> definitions)
     {
-        if (role is not (Roles.Admin or Roles.Teacher or Roles.Student)) return new();
+        if (role is not (Roles.Admin or Roles.Teacher or Roles.Student or Roles.Staff)) return new();
         var allowed = definitions.Where(p => IsAllowedForRole(role, p.Code) &&
             (role == Roles.Admin || p.AllowedRoles.Contains(role))).ToDictionary(p => p.Code);
         var result = grants.Where(allowed.ContainsKey).ToHashSet(StringComparer.Ordinal);
@@ -67,11 +72,12 @@ public static class PermissionCodes
     // Custom grants add restrictions; they never replace role or resource ownership checks.
     public static bool IsAllowedForRole(string role, string code) =>
         role == Roles.Admin ||
-        (role is Roles.Teacher or Roles.Student &&
+        (role is Roles.Teacher or Roles.Student or Roles.Staff &&
          (!SystemPermissions.Any(p => p.Code == code) || DefaultsForRole(role).Contains(code, StringComparer.Ordinal)));
 
     public static IReadOnlyList<string> DefaultsForRole(string role) => role switch
     {
+        Roles.Staff => [StaffStudentsView, StaffProgressView],
         Roles.Teacher =>
         [
             LessonsView, LessonsManage, AssignmentsView, AssignmentsManage,
