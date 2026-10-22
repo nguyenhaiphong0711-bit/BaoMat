@@ -618,6 +618,7 @@ export function ClassDetail() {
       <Link className="back-link" to="/classes">
         ← Danh sách lớp
       </Link>
+      {user.role === "Admin" && <Link className="button secondary" to={`/classes/${id}/edit`}>Chỉnh sửa lớp</Link>}
       <Heading
         eyebrow={c.subjectName}
         title={c.name}

@@ -31,6 +31,8 @@ Lỗi `npm` không tồn tại: cài Node.js rồi mở lại VS Code/Terminal �
 
 Toàn bộ điều hướng nghiệp vụ dùng React: lớp, lịch, đăng ký học, tiến độ, học phí, người dùng, phân quyền, khoa, ngành, học kỳ, duyệt đăng ký và nhật ký. Các URL Razor cũ được chuyển hướng sang route React tương ứng để bookmark cũ tiếp tục hoạt động. View Razor còn trong source chỉ phục vụ tương thích kiểm thử/POST cũ và trang lỗi máy chủ; người dùng không còn được điều hướng tới chúng từ ứng dụng.
 
+Các màn hình quản trị React hỗ trợ tạo và sửa lớp/roster/phân công, tạo và sửa khoa, cấu hình chương trình ngành theo môn-học kỳ-tín chỉ, tạo/hủy buổi học, duyệt giờ dạy và chỉnh hồ sơ học vụ cùng quyền chức năng theo vai trò. Playwright kiểm tra sidebar quản trị không còn liên kết tới URL MVC cũ.
+
 ## Cấu trúc để học và mở rộng
 
 ```text

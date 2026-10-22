@@ -99,6 +99,23 @@ test("cookie session survives reload and React routes; logout revokes it", async
   await expect((await page.request.get("/api/auth/me")).status()).toBe(401);
 });
 
+test("Admin academic and operations navigation stays inside React", async ({ page }) => {
+  await login(page, adminEmail, adminPassword);
+  for (const [link, heading, path] of [
+    ["Khoa", "Khoa/Viện", "/app/admin/departments"],
+    ["Ngành học", "Ngành học", "/app/admin/programs"],
+    ["Học kỳ", "Học kỳ", "/app/admin/terms"],
+    ["Người dùng", "Người dùng", "/app/admin/users"],
+    ["Duyệt đăng ký", "Duyệt đăng ký", "/app/admin/registrations"],
+    ["Nhật ký hoạt động", "Nhật ký hoạt động", "/app/admin/logs"],
+  ] as const) {
+    await page.getByRole("link", { name: link, exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`${path}$`));
+    await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+  }
+  expect(await page.locator('a[href^="/Schedule"], a[href^="/User"], a[href^="/Permission"]').count()).toBe(0);
+});
+
 test("Student UI hides Admin actions and the server rejects forged API writes", async ({
   page,
 }) => {

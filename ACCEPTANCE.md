@@ -13,7 +13,7 @@ Tài liệu này đối chiếu phạm vi bài tập với chức năng đã có
 | Ngân hàng câu hỏi và quiz | Đạt | Draft → duyệt → publish, lịch sử phiên bản, dấu AI, đáp án đúng phạm vi, attempt chống sửa đáp án |
 | Hỗ trợ người học | Đạt | Phiếu theo khoa, hội thoại, phân công, timeline trạng thái và quyền riêng tư |
 | Báo cáo và theo dõi tiến độ | Đạt | Báo cáo theo vai trò, CSV, sự kiện không lưu nội dung nhạy cảm |
-| React + TypeScript | Đạt trong phạm vi bài tập | Context + reducer, lifecycle qua hooks, không cần Redux |
+| React + TypeScript | Đạt trong phạm vi bài tập | Toàn bộ điều hướng nghiệp vụ và quản trị dùng React; Context + reducer, lifecycle qua hooks, không cần Redux |
 | Thông báo cá nhân | Đạt | Mở lớp, duyệt câu hỏi/học liệu và hỗ trợ; chỉ chủ tài khoản đọc/đánh dấu |
 | AI hỗ trợ soạn câu hỏi | Đạt ở mức tùy chọn | Chỉ tạo bản nháp, giới hạn phản hồi, lưu provenance, kiểm tra schema/phạm vi môn, bắt buộc người dùng duyệt |
 | Vận hành | Đạt ở mức bài tập | Liveness/readiness, backup/restore script, Docker/Render, smoke tải đồng thời |

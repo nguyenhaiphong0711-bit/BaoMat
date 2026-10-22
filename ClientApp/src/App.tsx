@@ -226,6 +226,7 @@ export function App() {
         <Route path="subjects" element={<Subjects />} />
         <Route path="classes" element={<Classes />} />
         <Route path="classes/new" element={<ClassEditor />} />
+        <Route path="classes/:classId/edit" element={<ClassEditor />} />
         <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="classes/:classId/lessons/new" element={<LessonEditor />} />
         <Route path="lessons/:lessonId/edit" element={<LessonEditor />} />

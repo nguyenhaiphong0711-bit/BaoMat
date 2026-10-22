@@ -104,7 +104,15 @@ public sealed class PortalController(UserService users, AcademicService academic
     }
 
     [HttpGet("admin/programs"), Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> Programs() => Ok(await academics.GetAllProgramsAsync());
+    public async Task<IActionResult> Programs()
+    {
+        var rows = new List<object>();
+        foreach (var program in await academics.GetAllProgramsAsync())
+            rows.Add(new { id = program.Id.ToString(), departmentId = program.DepartmentId.ToString(),
+                program.Code, program.Name, program.Description, program.IsActive,
+                curriculum = await academics.GetProgramCurriculumAsync(program.Id.ToString()) });
+        return Ok(rows);
+    }
 
     [HttpPost("admin/programs"), Authorize(Roles = Roles.Admin), ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveProgram(AcademicProgramViewModel request)
