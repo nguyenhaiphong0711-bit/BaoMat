@@ -4,7 +4,7 @@ COPY ClientApp/package.json ClientApp/package-lock.json ./
 RUN npm ci --no-fund
 COPY ClientApp/ ./
 RUN npm run build
-
+ 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY LMS.csproj ./
@@ -12,10 +12,14 @@ RUN dotnet restore LMS.csproj
 COPY . ./
 COPY --from=frontend /client/dist ./ClientApp/dist
 RUN dotnet publish LMS.csproj -c Release -o /app/publish /p:UseAppHost=false /p:SkipFrontendBuild=true
-
+ 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish ./
 ENV ASPNETCORE_ENVIRONMENT=Production
+# The runtime image has no Node.js, so never start the Vite dev server here,
+# even if ASPNETCORE_ENVIRONMENT is overridden to Development by the host.
+ENV Frontend__UseDevServer=false
 EXPOSE 10000
 CMD ["sh", "-c", "dotnet LMS.dll --urls http://0.0.0.0:${PORT:-10000}"]
+ 
