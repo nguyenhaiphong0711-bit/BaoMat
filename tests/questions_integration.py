@@ -41,6 +41,7 @@ def question_checks(state):
     question = request(teacher, '/api/questions', form, expected=201)
     qid = question['id']
     assert question['state'] == 'Draft' and question['options'][0]['id'] == 'A' and question['correctOption'] == 0
+    assert question['currentVersion'] == 1 and len(question['history']) == 1 and not question['aiAssisted']
     api(student, '/api/questions', expected=403)
     assert not any(x['id'] == qid for x in api(staff, '/api/questions')['items'])
     passed('question drafts validate assigned subjects, unique choices and answer bounds; students cannot read the answer bank')
@@ -56,6 +57,7 @@ def question_checks(state):
     assert any(x['type']=='question.reviewed' for x in api(teacher, '/api/notifications')['items'])
     question = request(teacher, f'/api/questions/{qid}', dict(form, revision=question['revision'], explanation='Mật khẩu mạnh, riêng biệt và MFA giúp bảo vệ tài khoản.'), method='PUT')
     assert question['state'] == 'Draft' and not question['reviewerName']
+    assert question['currentVersion'] == 2 and [x['number'] for x in question['history']] == [2,1]
     question = request(teacher, f'/api/questions/{qid}/submit', {'revision':question['revision']})
     question = request(staff, f'/api/questions/{qid}/review', {'revision':question['revision'],'approve':True,'comment':'Đã kiểm tra nội dung và đáp án'})
     assert question['state'] == 'Approved'

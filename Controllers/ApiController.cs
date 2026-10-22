@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using System.Security.Claims;
 using LMS.Security;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LMS.Controllers;
 
@@ -62,6 +63,7 @@ public sealed class ApiController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("auth/login")]
+    [EnableRateLimiting("login")]
     [ProducesResponseType<ApiIdentityResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login(ApiLoginRequest request)

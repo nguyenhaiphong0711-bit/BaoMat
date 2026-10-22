@@ -44,10 +44,14 @@ public sealed class AiQuestionDraftService(IHttpClientFactory clients, IOptions<
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(settings.TimeoutSeconds, 5, 120)));
         using var response = await clients.CreateClient(nameof(AiQuestionDraftService)).SendAsync(message, timeout.Token);
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException("Nhà cung cấp AI chưa thể tạo câu hỏi.");
+        if (response.Content.Headers.ContentLength is > 65536)
+            throw new InvalidOperationException("Phản hồi AI vượt quá giới hạn cho phép.");
         AiDraft? draft;
         try
         {
-            using var outer = JsonDocument.Parse(await response.Content.ReadAsStringAsync(timeout.Token));
+            var raw = await response.Content.ReadAsByteArrayAsync(timeout.Token);
+            if (raw.Length > 65536) throw new InvalidOperationException("Phản hồi AI vượt quá giới hạn cho phép.");
+            using var outer = JsonDocument.Parse(raw);
             if (!outer.RootElement.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0 ||
                 !choices[0].TryGetProperty("message", out var messageBody) ||
                 !messageBody.TryGetProperty("content", out var contentBody))
@@ -70,6 +74,7 @@ public sealed class AiQuestionDraftService(IHttpClientFactory clients, IOptions<
             Topic = request.Topic, Difficulty = request.Difficulty, Content = draft.Content,
             Options = draft.Options, CorrectOption = draft.CorrectOption, Explanation = draft.Explanation ?? "" });
         question.AiAssisted = true; question.AiModel = settings.Model; question.AiGeneratedAt = DateTime.UtcNow;
+        if (question.Versions.LastOrDefault() is { } version) version.CreatedAt = question.AiGeneratedAt.Value;
         await db.Questions.ReplaceOneAsync(x => x.Id == question.Id, question);
         return question;
     }

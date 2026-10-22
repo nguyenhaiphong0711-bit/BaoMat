@@ -191,6 +191,12 @@ export function QuestionDetail() {
           <strong>Môn:</strong> {item.subjectName} · <strong>Chủ đề:</strong>{" "}
           {item.topic}
         </p>
+        {item.aiAssisted && (
+          <div className="notice">
+            Bản nháp ban đầu có AI hỗ trợ{item.aiModel ? ` (${item.aiModel})` : ""};
+            nội dung vẫn do người dùng chịu trách nhiệm rà soát.
+          </div>
+        )}
         <ol type="A">
           {item.options.map((option, index) => (
             <li
@@ -214,6 +220,19 @@ export function QuestionDetail() {
         )}
         {item.reviewComment && (
           <div className="notice">Nhận xét: {item.reviewComment}</div>
+        )}
+        {item.history.length > 0 && (
+          <details>
+            <summary>Lịch sử {item.history.length} phiên bản</summary>
+            <ul>
+              {item.history.map((version) => (
+                <li key={version.number}>
+                  Phiên bản {version.number} · {version.editorName} ·{" "}
+                  {new Date(version.createdAt).toLocaleString("vi-VN")}
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
         <Alert message={action.error} />
         <div className="actions">

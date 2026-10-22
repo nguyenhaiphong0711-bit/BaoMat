@@ -44,6 +44,8 @@ export function Resources() {
   const query = params.get("q") ?? "";
   const category = params.get("category") ?? "";
   const state = params.get("state") ?? "";
+  const license = params.get("license") ?? "";
+  const access = params.get("access") ?? "";
   const page = Math.min(
     100000,
     Math.max(1, Math.floor(Number(params.get("page")) || 1)),
@@ -51,7 +53,7 @@ export function Resources() {
   const allowed = !!user && can(user, "resources.view");
   const result = useRemote<ResourcePage>(
     allowed
-      ? `/api/resources?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&state=${encodeURIComponent(state)}&page=${page}`
+      ? `/api/resources?q=${encodeURIComponent(query)}&category=${encodeURIComponent(category)}&license=${encodeURIComponent(license)}&access=${encodeURIComponent(access)}&state=${encodeURIComponent(state)}&page=${page}`
       : null,
   );
   const filter = (name: string, value: string) => {
@@ -114,6 +116,18 @@ export function Resources() {
                   {name}
                 </option>
               ))}
+            </select>
+          </label>
+          <label>
+            Giấy phép
+            <input maxLength={160} value={license} onChange={(e) => filter("license", e.target.value)} placeholder="CC BY…" />
+          </label>
+          <label>
+            Phạm vi truy cập
+            <select value={access} onChange={(e) => filter("access", e.target.value)}>
+              <option value="">Tất cả</option>
+              <option value="Subjects">Theo môn</option>
+              <option value="School">Trong trường</option>
             </select>
           </label>
         </div>

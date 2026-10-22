@@ -332,6 +332,23 @@ function SupportConversation({
             <p className="plain-content">{message.content}</p>
           </article>
         ))}
+        {ticket.history.length > 0 && (
+          <details>
+            <summary>Lịch sử xử lý</summary>
+            <ul>
+              {ticket.history.map((entry, index) => (
+                <li key={`${entry.createdAt}-${index}`}>
+                  {entry.action === "Created"
+                    ? "Đã tạo yêu cầu"
+                    : entry.action === "Assigned"
+                      ? "Đã thay đổi người phụ trách"
+                      : `Chuyển ${statuses[entry.fromStatus] ?? entry.fromStatus} → ${statuses[entry.toStatus] ?? entry.toStatus}`} ·{" "}
+                  {entry.actorName} · {new Date(entry.createdAt).toLocaleString("vi-VN")}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
         {ticket.canReply && (
           <form onSubmit={send}>
             <fieldset disabled={messageAction.busy}>

@@ -4,6 +4,7 @@ import json
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 from password_reset_smoke import Web
 
 
@@ -11,6 +12,12 @@ def operation_checks(state):
     api, web, mongo, passed = (state[key] for key in ('api', 'web', 'mongo', 'passed'))
     assert Web(web.base).request('/health/live')[0] == 200
     assert Web(web.base).request('/health/ready')[0] == 200
+    response = urllib.request.urlopen(web.base + '/health/live')
+    assert response.headers['X-Frame-Options'] == 'DENY'
+    assert response.headers['X-Content-Type-Options'] == 'nosniff'
+    assert 'camera=()' in response.headers['Permissions-Policy']
+    assert "frame-ancestors 'none'" in response.headers['Content-Security-Policy']
+    assert response.headers['X-Request-Id']
     passed('anonymous liveness and MongoDB readiness probes are healthy')
 
     teacher, student = Web(web.base), Web(web.base)
@@ -49,3 +56,13 @@ def operation_checks(state):
     assert len(statuses) == 96 and all(status == 200 for status in statuses)
     assert time.monotonic() - started < 30
     passed('96 concurrent authenticated and health reads complete without errors')
+
+    limited = Web(web.base)
+    statuses = []
+    for _ in range(70):
+        status, _ = limited.form('/Auth/Login',
+            {'Email':'rate-limit@example.test','Password':'Invalid@123','RememberMe':'false'})
+        statuses.append(status)
+        if status == 429: break
+    assert statuses[-1] == 429 and all(x in (200,429) for x in statuses)
+    passed('per-IP login limiter rejects excessive requests without authenticating')

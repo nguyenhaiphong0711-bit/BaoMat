@@ -38,6 +38,22 @@ public sealed class QuestionBankItem
     public bool AiAssisted { get; set; }
     public string AiModel { get; set; } = "";
     public DateTime? AiGeneratedAt { get; set; }
+    public int CurrentVersion { get; set; } = 1;
+    public List<QuestionVersion> Versions { get; set; } = new();
+}
+
+public sealed class QuestionVersion
+{
+    public int Number { get; set; }
+    public string Content { get; set; } = "";
+    public string Topic { get; set; } = "";
+    public string Difficulty { get; set; } = "Medium";
+    public List<QuestionOption> Options { get; set; } = new();
+    public int CorrectOption { get; set; }
+    public string Explanation { get; set; } = "";
+    public ObjectId EditorId { get; set; }
+    public string EditorName { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class QuestionOption
@@ -69,7 +85,10 @@ public sealed record QuestionResponse(string Id, int Revision, string SubjectId,
     string Topic, string Difficulty, string Content, IReadOnlyList<QuestionOption> Options,
     int CorrectOption, string Explanation, string State, bool IsArchived, string EditorName,
     string ReviewerName, string ReviewComment, bool CanEdit, bool CanSubmit, bool CanReview,
-    bool CanPublish, bool CanArchive);
+    bool CanPublish, bool CanArchive, bool AiAssisted, string AiModel, DateTime? AiGeneratedAt,
+    int CurrentVersion, IReadOnlyList<QuestionVersionResponse> History);
+
+public sealed record QuestionVersionResponse(int Number, string EditorName, DateTime CreatedAt);
 
 public sealed record AiQuestionDraftRequest
 {

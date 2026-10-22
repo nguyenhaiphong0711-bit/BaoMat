@@ -18,11 +18,13 @@ public sealed class ResourceController(ResourceService resources, UserService us
 
     [HttpGet]
     public async Task<IActionResult> List([FromQuery, StringLength(120)] string? q = null,
-        [FromQuery, StringLength(80)] string? category = null, string? subjectId = null, string? state = null,
+        [FromQuery, StringLength(80)] string? category = null, [FromQuery, StringLength(160)] string? license = null,
+        [FromQuery, RegularExpression("^(Subjects|School)$")] string? access = null,
+        string? subjectId = null, string? state = null,
         [FromQuery, Range(1, 100000)] int page = 1)
     {
         var user = await CurrentAsync();
-        return user is null ? Unauthorized() : Ok(await resources.ListAsync(user, q, category, subjectId, state, page));
+        return user is null ? Unauthorized() : Ok(await resources.ListAsync(user, q, category, license, access, subjectId, state, page));
     }
 
     [HttpGet("subjects"), Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.ResourcesManage)]

@@ -27,6 +27,18 @@ public sealed class SupportTicket
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ResolvedAt { get; set; }
+    public List<SupportHistoryEntry> History { get; set; } = new();
+}
+
+public sealed class SupportHistoryEntry
+{
+    public string Action { get; set; } = "";
+    public string FromStatus { get; set; } = "";
+    public string ToStatus { get; set; } = "";
+    public ObjectId ActorId { get; set; }
+    public string ActorName { get; set; } = "";
+    public string ActorRole { get; set; } = "";
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class SupportMessage
@@ -64,4 +76,6 @@ public sealed record SupportMessageResponse(string Id, string SenderName, string
 public sealed record SupportTicketResponse(string Id, int Revision, string Subject, string Category, string Priority,
     string Status, string StudentName, string DepartmentName, string AssignedStaffName, string? AssignedStaffId,
     DateTime CreatedAt, DateTime UpdatedAt, bool CanReply, bool CanManage,
-    IReadOnlyList<SupportMessageResponse> Messages);
+    IReadOnlyList<SupportMessageResponse> Messages, IReadOnlyList<SupportHistoryResponse> History);
+public sealed record SupportHistoryResponse(string Action, string FromStatus, string ToStatus,
+    string ActorName, string ActorRole, DateTime CreatedAt);

@@ -80,6 +80,8 @@ def resource_checks(state):
         assert view['state']=='Published' and view['history']==[] and not view['canEdit']
         assert client.request(file_url)==(200,'Shared resource file')
     api(student,'/api/resources/'+rid)
+    assert any(x['id']==rid for x in api(student,'/api/resources?license=CC%20BY&access=Subjects')['items'])
+    assert all(x['id']!=rid for x in api(student,'/api/resources?access=School')['items'])
     assert student.request(file_url)==(200,'Shared resource file')
     assert int(mongo('print(d.LearningEvents.countDocuments({ActorId:ObjectId("'+state['student_id']+'"),Type:{$in:["resource.viewed","resource.downloaded"]}}))'))==2
     api(outside,'/api/resources/'+rid,expected=404)

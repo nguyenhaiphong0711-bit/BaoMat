@@ -63,7 +63,8 @@ public sealed class QuizService(MongoContext db, UserService users, LearningEven
                 var q = byId[id];
                 return new QuestionResponse(q.Id.ToString(), q.Revision, q.SubjectId.ToString(), "", q.Topic,
                     q.Difficulty, q.Content, q.Options, q.CorrectOption, q.Explanation, q.State, q.IsArchived,
-                    q.EditorName, q.ReviewerName, q.ReviewComment, false, false, false, false, false);
+                    q.EditorName, q.ReviewerName, q.ReviewComment, false, false, false, false, false,
+                    q.AiAssisted, q.AiModel, q.AiGeneratedAt, q.CurrentVersion, Array.Empty<QuestionVersionResponse>());
             }).ToArray();
             var attemptDocs = await db.QuizAttempts.Find(x => x.QuizId == quiz.Id).SortBy(x => x.StartedAt).ToListAsync();
             var studentIds = attemptDocs.Select(x => x.StudentId).Distinct().ToArray();

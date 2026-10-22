@@ -7,7 +7,7 @@ namespace LMS.Services;
 
 // Versions, reviews and the publication pointer share one document for atomic transitions.
 public sealed class ResourceService(MongoContext db, FileStorageService files, UserService users,
-    NotificationService notifications)
+    NotificationService notifications, LearningEventService events)
 {
     public async Task<LearningResource?> GetAsync(string id)
     {
@@ -79,7 +79,8 @@ public sealed class ResourceService(MongoContext db, FileStorageService files, U
             manager || reviewer ? version.ReviewComment : "", history);
     }
 
-    public async Task<object> ListAsync(User user, string? query, string? category, string? subjectId, string? state, int page)
+    public async Task<object> ListAsync(User user, string? query, string? category, string? license, string? access,
+        string? subjectId, string? state, int page)
     {
         // Small personal-project catalog: authorize before filtering, counting and paging.
         var matches = new List<ResourceResponse>();
@@ -89,6 +90,8 @@ public sealed class ResourceService(MongoContext db, FileStorageService files, U
             if (version is null || (!string.IsNullOrWhiteSpace(query) &&
                 !(version.Title + " " + version.AuthorName + " " + version.Description).Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrWhiteSpace(category) && !version.Category.Equals(category, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(license) && !version.License.Contains(license.Trim(), StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(access) && !version.Access.Equals(access, StringComparison.Ordinal)) ||
                 (!string.IsNullOrWhiteSpace(subjectId) && !version.SubjectIds.Any(x => x.ToString() == subjectId)) ||
                 (!string.IsNullOrWhiteSpace(state) && (resource.IsArchived ? "Archived" : version.State) != state)) continue;
             matches.Add(await ToResponseAsync(user, resource, version));
@@ -175,6 +178,12 @@ public sealed class ResourceService(MongoContext db, FileStorageService files, U
             }
         }
         var saved = await SaveAsync(resource, request.Revision);
+        if (saved)
+        {
+            var auditSubject = await db.Subjects.Find(x => version.SubjectIds.Contains(x.Id)).FirstOrDefaultAsync();
+            await events.RecordAsync($"resource.{action}", user, "LearningResource", resource.Id,
+                $"Học liệu đã thực hiện thao tác {action}", departmentId: auditSubject?.DepartmentId);
+        }
         if (saved && action == "submit")
         {
             var departments = await db.Subjects.Find(x => version.SubjectIds.Contains(x.Id))

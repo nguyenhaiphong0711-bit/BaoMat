@@ -44,7 +44,9 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
             ticket.Status, student?.FullName ?? "", department?.Name ?? "", assigned?.FullName ?? "",
             ticket.AssignedStaffId?.ToString(), ticket.CreatedAt, ticket.UpdatedAt,
             ticket.Status != TicketStatuses.Closed && (manager || user.Id == ticket.StudentId), manager,
-            ticket.Messages.Select(x => new SupportMessageResponse(x.Id, x.SenderName, x.SenderRole, x.Content, x.SentAt)).ToArray());
+            ticket.Messages.Select(x => new SupportMessageResponse(x.Id, x.SenderName, x.SenderRole, x.Content, x.SentAt)).ToArray(),
+            ticket.History.Select(x => new SupportHistoryResponse(x.Action, x.FromStatus, x.ToStatus,
+                x.ActorName, x.ActorRole, x.CreatedAt)).ToArray());
     }
 
     public async Task<object> ListAsync(User user, string? query, string? status, int page)
@@ -63,7 +65,8 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
             if (response is null || (!string.IsNullOrWhiteSpace(query) &&
                 !(response.Subject + " " + response.StudentName).Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrWhiteSpace(status) && response.Status != status)) continue;
-            visible.Add(response with { Messages = Array.Empty<SupportMessageResponse>() });
+            visible.Add(response with { Messages = Array.Empty<SupportMessageResponse>(),
+                History = Array.Empty<SupportHistoryResponse>() });
         }
         return new { items = visible.Skip((page - 1) * 15).Take(15), total = visible.Count, page, pageSize = 15 };
     }
@@ -76,6 +79,7 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
         var ticket = new SupportTicket { StudentId = student.Id, DepartmentId = departmentId,
             Subject = request.Subject.Trim(), Category = request.Category.Trim(), Priority = request.Priority };
         ticket.Messages.Add(Message(student, request.Content));
+        ticket.History.Add(History("Created", "", TicketStatuses.Open, student));
         await db.SupportTickets.InsertOneAsync(ticket);
         await events.RecordAsync("support.created", student, "SupportTicket", ticket.Id,
             "Đã tạo yêu cầu hỗ trợ", student.Id, departmentId);
@@ -91,6 +95,7 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
             throw new ArgumentException("Yêu cầu đã đóng hoặc đã đạt giới hạn 200 tin nhắn.");
         var manager = await CanManageAsync(user, ticket);
         if (user.Role != Roles.Student && !manager) throw new UnauthorizedAccessException();
+        var oldStatus = ticket.Status; var oldAssigned = ticket.AssignedStaffId;
         ticket.Messages.Add(Message(user, request.Content));
         if (manager && ticket.AssignedStaffId is null && user.Role == Roles.Staff)
             ticket.AssignedStaffId = user.Id;
@@ -98,6 +103,10 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
         if (user.Role == Roles.Student && ticket.Status == TicketStatuses.Resolved)
         { ticket.Status = TicketStatuses.Open; ticket.ResolvedAt = null; }
         ticket.UpdatedAt = DateTime.UtcNow;
+        if (oldStatus != ticket.Status)
+            ticket.History.Add(History("StatusChanged", oldStatus, ticket.Status, user));
+        if (oldAssigned != ticket.AssignedStaffId)
+            ticket.History.Add(History("Assigned", ticket.Status, ticket.Status, user));
         var saved = await SaveAsync(ticket, request.Revision);
         if (saved)
         {
@@ -133,9 +142,14 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
             assigned = user.Id;
         if (request.Status is TicketStatuses.InProgress or TicketStatuses.Resolved && assigned is null)
             throw new ArgumentException("Cần phân công cán bộ trước khi xử lý hoặc hoàn tất.");
+        var oldStatus = ticket.Status; var oldAssigned = ticket.AssignedStaffId;
         ticket.AssignedStaffId = assigned; ticket.Status = request.Status;
         ticket.ResolvedAt = request.Status == TicketStatuses.Resolved ? DateTime.UtcNow : null;
         ticket.UpdatedAt = DateTime.UtcNow;
+        if (oldStatus != ticket.Status)
+            ticket.History.Add(History("StatusChanged", oldStatus, ticket.Status, user));
+        if (oldAssigned != ticket.AssignedStaffId)
+            ticket.History.Add(History("Assigned", ticket.Status, ticket.Status, user));
         var saved = await SaveAsync(ticket, request.Revision);
         if (saved)
         {
@@ -149,6 +163,10 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
 
     private static SupportMessage Message(User user, string content) => new()
     { SenderId = user.Id, SenderName = user.FullName, SenderRole = user.Role, Content = content.Trim() };
+
+    private static SupportHistoryEntry History(string action, string from, string to, User user) => new()
+    { Action = action, FromStatus = from, ToStatus = to, ActorId = user.Id,
+        ActorName = user.FullName, ActorRole = user.Role };
 
     private async Task<bool> SaveAsync(SupportTicket ticket, int expected)
     {

@@ -168,6 +168,11 @@ export interface QuestionItem {
   canReview: boolean;
   canPublish: boolean;
   canArchive: boolean;
+  aiAssisted: boolean;
+  aiModel: string;
+  aiGeneratedAt: string | null;
+  currentVersion: number;
+  history: { number: number; editorName: string; createdAt: string }[];
 }
 export interface QuestionPage {
   items: QuestionItem[];
@@ -249,6 +254,14 @@ export interface SupportTicket {
     senderRole: Role;
     content: string;
     sentAt: string;
+  }[];
+  history: {
+    action: string;
+    fromStatus: string;
+    toStatus: string;
+    actorName: string;
+    actorRole: Role;
+    createdAt: string;
   }[];
 }
 export interface SupportPage {

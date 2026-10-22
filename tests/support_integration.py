@@ -37,6 +37,7 @@ def support_checks(state):
     ticket = request(student, '/api/support', form, expected=201)
     tid = ticket['id']
     assert ticket['status'] == 'Open' and ticket['studentName'] == 'Nguyễn Hải Phong'
+    assert len(ticket['history']) == 1 and ticket['history'][0]['action'] == 'Created'
     assert ticket['departmentName'] != 'Other department' and ticket['assignedStaffId'] is None
     assert any(x['type']=='support.created' for x in api(staff, '/api/notifications')['items'])
     listed = api(student, '/api/support')['items'][0]
@@ -65,6 +66,8 @@ def support_checks(state):
     ticket = request(student, f'/api/support/{tid}/messages', {'revision':ticket['revision'],'content':'Em đã cung cấp thêm thông tin.'})
     ticket = request(staff, '/api/support/'+tid, {'revision':ticket['revision'],'status':'Resolved','assignedStaffId':staff_id}, method='PUT')
     assert ticket['status'] == 'Resolved'
+    assert any(x['action']=='StatusChanged' and x['toStatus']=='Resolved' for x in ticket['history'])
+    assert any(x['action']=='Assigned' for x in ticket['history'])
     assert any(x['type']=='support.status' for x in api(student, '/api/notifications')['items'])
     ticket = request(student, f'/api/support/{tid}/messages', {'revision':ticket['revision'],'content':'Vấn đề vẫn còn xảy ra.'})
     assert ticket['status'] == 'Open'

@@ -12,5 +12,5 @@ Ai__Model=your-model-name
 Ai__TimeoutSeconds=30
 ```
 
-Endpoint bắt buộc dùng HTTPS. Khóa API không được gửi xuống trình duyệt, lưu vào MongoDB hay commit. Máy chủ yêu cầu JSON gồm `content`, bốn phần tử `options`, `correctOption` từ 0 đến 3 và `explanation`; phản hồi sai cấu trúc bị loại bỏ và không tạo câu hỏi. Khi chưa cấu hình hoặc nhà cung cấp lỗi/quá thời gian, API trả 503 và người dùng vẫn có thể tạo câu hỏi thủ công.
+Endpoint bắt buộc dùng HTTPS. Khóa API không được gửi xuống trình duyệt, lưu vào MongoDB hay commit. Máy chủ yêu cầu JSON gồm `content`, bốn phần tử `options`, `correctOption` từ 0 đến 3 và `explanation`; phản hồi sai cấu trúc hoặc lớn hơn 64 KiB bị loại bỏ và không tạo câu hỏi. Bản ghi lưu model, thời điểm AI hỗ trợ và tiếp tục giữ lịch sử khi giảng viên chỉnh sửa. Khi chưa cấu hình hoặc nhà cung cấp lỗi/quá thời gian, API trả 503 và người dùng vẫn có thể tạo câu hỏi thủ công.
 

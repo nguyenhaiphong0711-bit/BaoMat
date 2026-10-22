@@ -5,7 +5,8 @@ using MongoDB.Driver;
 
 namespace LMS.Services;
 
-public sealed class QuestionBankService(MongoContext db, UserService users, NotificationService notifications)
+public sealed class QuestionBankService(MongoContext db, UserService users, NotificationService notifications,
+    LearningEventService events)
 {
     public async Task<QuestionBankItem?> GetAsync(string id) => ObjectId.TryParse(id, out var key)
         ? await db.Questions.Find(x => x.Id == key).FirstOrDefaultAsync() : null;
@@ -53,7 +54,9 @@ public sealed class QuestionBankService(MongoContext db, UserService users, Noti
             reviewer && !question.IsArchived && question.State == QuestionStates.Pending &&
                 question.OwnerId != user.Id && question.EditorId != user.Id,
             manager && !question.IsArchived && question.State == QuestionStates.Approved,
-            manager && !question.IsArchived);
+            manager && !question.IsArchived, question.AiAssisted, question.AiModel, question.AiGeneratedAt,
+            question.CurrentVersion, question.Versions.OrderByDescending(x => x.Number)
+                .Select(x => new QuestionVersionResponse(x.Number, x.EditorName, x.CreatedAt)).ToArray());
     }
 
     public async Task<object> ListAsync(User user, string? query, string? subjectId, string? state, int page)
@@ -95,6 +98,7 @@ public sealed class QuestionBankService(MongoContext db, UserService users, Noti
     {
         var question = new QuestionBankItem { OwnerId = user.Id };
         await ApplyRequestAsync(user, question, request);
+        AddVersion(question);
         await db.Questions.InsertOneAsync(question);
         return question;
     }
@@ -105,8 +109,19 @@ public sealed class QuestionBankService(MongoContext db, UserService users, Noti
         if (question.IsArchived || question.State is not (QuestionStates.Draft or QuestionStates.Rejected))
             throw new ArgumentException("Chỉ có thể sửa câu hỏi nháp hoặc câu hỏi bị từ chối.");
         await ApplyRequestAsync(user, question, request);
+        if (question.Versions.Count >= 50) throw new ArgumentException("Câu hỏi đã đạt giới hạn 50 phiên bản.");
+        question.CurrentVersion = Math.Max(question.CurrentVersion, question.Versions.LastOrDefault()?.Number ?? 0) + 1;
+        AddVersion(question);
         return await SaveAsync(question, request.Revision);
     }
+
+    private static void AddVersion(QuestionBankItem question) => question.Versions.Add(new QuestionVersion
+    {
+        Number = question.CurrentVersion, Content = question.Content, Topic = question.Topic,
+        Difficulty = question.Difficulty, Options = question.Options.Select(x => new QuestionOption { Id = x.Id, Text = x.Text }).ToList(),
+        CorrectOption = question.CorrectOption, Explanation = question.Explanation,
+        EditorId = question.EditorId, EditorName = question.EditorName, CreatedAt = question.UpdatedAt
+    });
 
     public async Task<bool> TransitionAsync(User user, QuestionBankItem question, string action, QuestionActionRequest request)
     {
@@ -136,6 +151,12 @@ public sealed class QuestionBankService(MongoContext db, UserService users, Noti
         }
         question.UpdatedAt = DateTime.UtcNow;
         var saved = await SaveAsync(question, request.Revision);
+        if (saved)
+        {
+            var auditSubject = await db.Subjects.Find(x => x.Id == question.SubjectId).FirstOrDefaultAsync();
+            await events.RecordAsync($"question.{action}", user, "Question", question.Id,
+                $"Câu hỏi đã thực hiện thao tác {action}", departmentId: auditSubject?.DepartmentId);
+        }
         if (saved && action == "submit")
         {
             var subject = await db.Subjects.Find(x => x.Id == question.SubjectId).FirstOrDefaultAsync();

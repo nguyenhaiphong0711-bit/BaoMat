@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LMS.Controllers;
 public class AuthController : Controller
@@ -19,7 +20,7 @@ public class AuthController : Controller
     }
 
     [AllowAnonymous] public IActionResult Login() => User.Identity?.IsAuthenticated == true ? RedirectToAction("Index", "Dashboard") : View();
-    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginViewModel vm)
     {
         if (!ModelState.IsValid) return View(vm);
@@ -47,7 +48,7 @@ public class AuthController : Controller
     [AllowAnonymous]
     public IActionResult ForgotPassword() => View(new ForgotPasswordViewModel());
 
-    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken, EnableRateLimiting("password-reset")]
     public async Task<IActionResult> ForgotPassword(
         ForgotPasswordViewModel model,
         CancellationToken cancellationToken)
@@ -73,7 +74,7 @@ public class AuthController : Controller
     public IActionResult ResetPassword(string? email) =>
         View(new ResetPasswordViewModel { Email = email?.Trim() ?? "" });
 
-    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken]
+    [HttpPost, AllowAnonymous, ValidateAntiForgeryToken, EnableRateLimiting("password-reset")]
     public async Task<IActionResult> ResetPassword(
         ResetPasswordViewModel model,
         CancellationToken cancellationToken)

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LMS.Controllers;
 
@@ -23,7 +24,7 @@ public sealed class FrontendController(
         return Ok(new { requestToken = antiforgery.GetAndStoreTokens(HttpContext).RequestToken });
     }
 
-    [HttpPost("login"), AllowAnonymous, ValidateAntiForgeryToken]
+    [HttpPost("login"), AllowAnonymous, ValidateAntiForgeryToken, EnableRateLimiting("login")]
     public async Task<IActionResult> Login(ApiLoginRequest request)
     {
         var result = await auth.LoginAsync(new LoginViewModel { Email = request.Email, Password = request.Password }, HttpContext);
@@ -48,7 +49,7 @@ public sealed class FrontendController(
         return NoContent();
     }
 
-    [HttpPost("forgot-password"), AllowAnonymous, ValidateAntiForgeryToken]
+    [HttpPost("forgot-password"), AllowAnonymous, ValidateAntiForgeryToken, EnableRateLimiting("password-reset")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel request, CancellationToken cancellationToken)
     {
         try { await passwordReset.RequestCodeAsync(request.Email, cancellationToken); }
@@ -59,7 +60,7 @@ public sealed class FrontendController(
         return Ok(new { message = "Nếu email thuộc tài khoản đang hoạt động, mã OTP sẽ được gửi đến hộp thư đó. Mã có hiệu lực trong 10 phút." });
     }
 
-    [HttpPost("reset-password"), AllowAnonymous, ValidateAntiForgeryToken]
+    [HttpPost("reset-password"), AllowAnonymous, ValidateAntiForgeryToken, EnableRateLimiting("password-reset")]
     public async Task<IActionResult> ResetPassword(ResetPasswordViewModel request, CancellationToken cancellationToken)
     {
         if (!await passwordReset.ResetPasswordAsync(request.Email, request.Code, request.NewPassword, cancellationToken))

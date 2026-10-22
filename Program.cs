@@ -5,6 +5,8 @@ using LMS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 DotNetEnv.Env.NoClobber().Load(Path.Combine(Directory.GetCurrentDirectory(), ".env"));
 
@@ -17,6 +19,16 @@ builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpa
 builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("Ai"));
 builder.Services.AddHttpClient();
 builder.Services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongodb");
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"{context.Connection.RemoteIpAddress}:{context.Request.Path}", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
+    options.AddPolicy("password-reset", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"{context.Connection.RemoteIpAddress}:{context.Request.Path}", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 10, Window = TimeSpan.FromHours(1), QueueLimit = 0, AutoReplenishment = true }));
+});
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
@@ -86,13 +98,18 @@ if (args.Contains("--sync-permissions", StringComparer.Ordinal))
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseExceptionHandler("/error");
 }
 
 app.Use(async (context, next) =>
 {
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["Referrer-Policy"] = "same-origin";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    context.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'none'; object-src 'none'; base-uri 'self'";
+    context.Response.Headers["X-Request-Id"] = context.TraceIdentifier;
     await next();
 });
 app.UseStaticFiles();
@@ -118,6 +135,7 @@ if (useReactDevServer)
         frontend.UseSpa(spa => spa.UseProxyToSpaDevelopmentServer($"http://127.0.0.1:{ReactDevelopmentServer.Port(app.Configuration)}")));
 }
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.Use(async (context, next) =>
 {
