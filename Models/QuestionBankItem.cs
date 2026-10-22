@@ -35,6 +35,9 @@ public sealed class QuestionBankItem
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ReviewedAt { get; set; }
+    public bool AiAssisted { get; set; }
+    public string AiModel { get; set; } = "";
+    public DateTime? AiGeneratedAt { get; set; }
 }
 
 public sealed class QuestionOption
@@ -67,3 +70,11 @@ public sealed record QuestionResponse(string Id, int Revision, string SubjectId,
     int CorrectOption, string Explanation, string State, bool IsArchived, string EditorName,
     string ReviewerName, string ReviewComment, bool CanEdit, bool CanSubmit, bool CanReview,
     bool CanPublish, bool CanArchive);
+
+public sealed record AiQuestionDraftRequest
+{
+    [Required] public string SubjectId { get; init; } = "";
+    [Required, StringLength(120)] public string Topic { get; init; } = "";
+    [Required, RegularExpression("^(Easy|Medium|Hard)$")] public string Difficulty { get; init; } = "Medium";
+    [Required, StringLength(1000)] public string LearningObjective { get; init; } = "";
+}

@@ -6,7 +6,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { api } from "./api";
+import { api, errorMessage } from "./api";
 import { can, useAuth } from "./auth";
 import { useAction, useRemote } from "./hooks";
 import { Alert, Loading } from "./ui";
@@ -326,6 +326,19 @@ function QuestionForm({
     correctOption: question?.correctOption ?? 0,
     options: question?.options.map((x) => x.text) ?? ["", "", "", ""],
   });
+  const [objective, setObjective] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  async function generateAiDraft() {
+    setAiBusy(true); setAiError(null);
+    try {
+      const saved = await api<QuestionItem>("/api/questions/ai-draft", { method: "POST", body: {
+        subjectId: form.subjectId, topic: form.topic, difficulty: form.difficulty, learningObjective: objective,
+      }});
+      navigate(`/questions/${saved.id}/edit`);
+    } catch (reason) { setAiError(errorMessage(reason)); }
+    finally { setAiBusy(false); }
+  }
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void action.run(
@@ -361,9 +374,18 @@ function QuestionForm({
           bố.
         </p>
         <Alert message={action.error} />
+        <Alert message={aiError} />
         {!subjects.length && (
           <Alert message="Bạn chưa có môn được phân công." />
         )}
+        {!question && <div className="panel">
+          <h2>Trợ lý tạo nháp</h2>
+          <p className="muted">AI chỉ tạo bản nháp để giảng viên rà soát; vẫn phải qua người khác kiểm duyệt.</p>
+          <label>Mục tiêu học tập<textarea rows={2} maxLength={1000} value={objective} onChange={(e)=>setObjective(e.target.value)} /></label>
+          <button type="button" className="button secondary" disabled={aiBusy || !form.subjectId || !form.topic.trim() || !objective.trim()} onClick={generateAiDraft}>
+            {aiBusy ? "Đang tạo nháp…" : "Tạo nháp bằng AI"}
+          </button>
+        </div>}
         <form onSubmit={submit}>
           <fieldset disabled={action.busy || !subjects.length}>
             <label>

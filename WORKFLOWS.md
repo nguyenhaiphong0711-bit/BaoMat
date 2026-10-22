@@ -6,4 +6,4 @@ Admin xem cùng màn hình, nhập nhận xét rồi duyệt hoặc từ chối.
 
 Mục **Thông báo** chỉ trả dữ liệu của tài khoản đăng nhập. Admin nhận thông báo khi có đề xuất mới; giảng viên nhận kết quả xử lý và liên kết tới lớp vừa tạo. Người dùng có thể đánh dấu từng thông báo hoặc tất cả là đã đọc. API không nhận `userId` từ trình duyệt để thay đổi phạm vi.
 
-Các thông báo hiện bao phủ quy trình mở lớp. Có thể mở rộng cùng `NotificationService` cho hỗ trợ người học và các quy trình duyệt nội dung sau này.
+Thông báo cũng bao phủ câu hỏi và học liệu chờ kiểm duyệt, kết quả duyệt, phiếu hỗ trợ mới, phản hồi và thay đổi trạng thái hỗ trợ. Thông báo kiểm duyệt được gửi cho Admin và cán bộ đang hoạt động thuộc đúng khoa; tác giả nhận kết quả. Nội dung thông báo hỗ trợ chỉ chứa tiêu đề phiếu, không sao chép hội thoại riêng tư.

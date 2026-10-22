@@ -10,7 +10,8 @@ namespace LMS.Controllers;
 
 [ApiController, Route("api/questions"), Authorize(Roles = Roles.Admin + "," + Roles.Teacher + "," + Roles.Staff),
  RequirePermission(PermissionCodes.QuestionsView)]
-public sealed class QuestionBankController(QuestionBankService questions, UserService users) : ControllerBase
+public sealed class QuestionBankController(QuestionBankService questions, UserService users,
+    AiQuestionDraftService aiDrafts) : ControllerBase
 {
     private Task<User?> CurrentAsync() => users.GetAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "");
 
@@ -44,6 +45,21 @@ public sealed class QuestionBankController(QuestionBankService questions, UserSe
         var user = await CurrentAsync(); if (user is null) return Unauthorized();
         try { var question = await questions.CreateAsync(user, request); return Created($"/api/questions/{question.Id}", await questions.ResponseAsync(user, question)); }
         catch (ArgumentException error) { return Problem(statusCode: 400, title: error.Message); }
+    }
+
+    [HttpPost("ai-draft"), Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.QuestionsManage), ValidateAntiForgeryToken]
+    public async Task<IActionResult> AiDraft(AiQuestionDraftRequest request, CancellationToken cancellationToken)
+    {
+        var user = await CurrentAsync(); if (user is null) return Unauthorized();
+        try
+        {
+            var question = await aiDrafts.CreateDraftAsync(user, request, cancellationToken);
+            return Created($"/api/questions/{question.Id}", await questions.ResponseAsync(user, question));
+        }
+        catch (UnauthorizedAccessException) { return Forbid(); }
+        catch (InvalidOperationException error) { return Problem(statusCode: 503, title: error.Message); }
+        catch (HttpRequestException) { return Problem(statusCode: 503, title: "Không thể kết nối nhà cung cấp AI."); }
+        catch (TaskCanceledException) { return Problem(statusCode: 503, title: "Nhà cung cấp AI phản hồi quá thời gian."); }
     }
 
     [HttpPut("{id}"), Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.QuestionsManage), ValidateAntiForgeryToken]

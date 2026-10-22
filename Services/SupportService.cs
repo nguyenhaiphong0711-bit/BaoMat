@@ -5,7 +5,8 @@ using MongoDB.Driver;
 
 namespace LMS.Services;
 
-public sealed class SupportService(MongoContext db, UserService users, LearningEventService events)
+public sealed class SupportService(MongoContext db, UserService users, LearningEventService events,
+    NotificationService notifications)
 {
     public async Task<SupportTicket?> GetAsync(string id) => ObjectId.TryParse(id, out var key)
         ? await db.SupportTickets.Find(x => x.Id == key).FirstOrDefaultAsync() : null;
@@ -78,6 +79,8 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
         await db.SupportTickets.InsertOneAsync(ticket);
         await events.RecordAsync("support.created", student, "SupportTicket", ticket.Id,
             "Đã tạo yêu cầu hỗ trợ", student.Id, departmentId);
+        await notifications.NotifyDepartmentAsync(departmentId, "support.created", "Yêu cầu hỗ trợ mới",
+            ticket.Subject, $"/app/support/{ticket.Id}", student.Id);
         return ticket;
     }
 
@@ -96,8 +99,20 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
         { ticket.Status = TicketStatuses.Open; ticket.ResolvedAt = null; }
         ticket.UpdatedAt = DateTime.UtcNow;
         var saved = await SaveAsync(ticket, request.Revision);
-        if (saved) await events.RecordAsync("support.replied", user, "SupportTicket", ticket.Id,
-            "Đã cập nhật hội thoại hỗ trợ", ticket.StudentId, ticket.DepartmentId);
+        if (saved)
+        {
+            await events.RecordAsync("support.replied", user, "SupportTicket", ticket.Id,
+                "Đã cập nhật hội thoại hỗ trợ", ticket.StudentId, ticket.DepartmentId);
+            if (user.Role == Roles.Student)
+            {
+                if (ticket.AssignedStaffId.HasValue) await notifications.AddAsync(ticket.AssignedStaffId.Value,
+                    "support.replied", "Sinh viên vừa trả lời", ticket.Subject, $"/app/support/{ticket.Id}");
+                else await notifications.NotifyDepartmentAsync(ticket.DepartmentId, "support.replied",
+                    "Sinh viên vừa trả lời", ticket.Subject, $"/app/support/{ticket.Id}", user.Id);
+            }
+            else await notifications.AddAsync(ticket.StudentId, "support.replied", "Yêu cầu hỗ trợ có phản hồi mới",
+                ticket.Subject, $"/app/support/{ticket.Id}");
+        }
         return saved;
     }
 
@@ -122,8 +137,13 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
         ticket.ResolvedAt = request.Status == TicketStatuses.Resolved ? DateTime.UtcNow : null;
         ticket.UpdatedAt = DateTime.UtcNow;
         var saved = await SaveAsync(ticket, request.Revision);
-        if (saved) await events.RecordAsync("support.status", user, "SupportTicket", ticket.Id,
-            "Yêu cầu hỗ trợ chuyển sang " + request.Status, ticket.StudentId, ticket.DepartmentId);
+        if (saved)
+        {
+            await events.RecordAsync("support.status", user, "SupportTicket", ticket.Id,
+                "Yêu cầu hỗ trợ chuyển sang " + request.Status, ticket.StudentId, ticket.DepartmentId);
+            await notifications.AddAsync(ticket.StudentId, "support.status", "Trạng thái hỗ trợ đã thay đổi",
+                $"{ticket.Subject}: {request.Status}", $"/app/support/{ticket.Id}");
+        }
         return saved;
     }
 

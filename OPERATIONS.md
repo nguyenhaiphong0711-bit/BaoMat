@@ -17,3 +17,16 @@ Phục hồi sẽ xóa rồi thay thế các collection trùng tên trong databa
 ```
 
 Trước khi restore production, dừng ứng dụng để tránh ghi đồng thời, xác nhận đúng database trong `.env`, tạo thêm một backup hiện trạng và thử file trên database tạm. Atlas vẫn nên bật **Cloud Backup/PITR** nếu gói đang dùng hỗ trợ; script này là bản sao lưu chủ động cho bài tập và không thay thế chính sách sao lưu của nhà cung cấp.
+
+## Kiểm tra trạng thái dịch vụ
+
+- `GET /health/live` trả 200 khi tiến trình web đang chạy.
+- `GET /health/ready` chỉ trả 200 khi ứng dụng ping được MongoDB; dùng endpoint này cho health check của Render hoặc container orchestrator.
+
+Sau khi build Release, bộ hồi quy đầy đủ kiểm tra cả hai endpoint và chạy 96 lượt đọc đồng thời trên health, lớp học và báo cáo:
+
+```bash
+python3 tests/reports_integration.py --dotnet "$(command -v dotnet)" --dll path/to/LMS.dll --postman
+```
+
+Đây là smoke test để phát hiện lỗi kết nối, phân quyền và lỗi 5xx dưới tải nhỏ. Trước khi phục vụ thật, cần chạy load test riêng với số người dùng, dữ liệu, vùng mạng và Atlas tier dự kiến.

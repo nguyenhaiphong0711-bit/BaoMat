@@ -136,4 +136,8 @@ public class MongoContext
                 PartialFilterExpression = Builders<TuitionInvoice>.Filter.Gt(x => x.VnpayTransactionReference, "")
             }));
     }
+
+    public async Task PingAsync(CancellationToken cancellationToken) =>
+        await _database.RunCommandAsync<MongoDB.Bson.BsonDocument>(
+            new MongoDB.Bson.BsonDocument("ping", 1), cancellationToken: cancellationToken);
 }

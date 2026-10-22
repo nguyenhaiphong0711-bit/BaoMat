@@ -5,7 +5,7 @@ using MongoDB.Driver;
 
 namespace LMS.Services;
 
-public sealed class QuestionBankService(MongoContext db, UserService users)
+public sealed class QuestionBankService(MongoContext db, UserService users, NotificationService notifications)
 {
     public async Task<QuestionBankItem?> GetAsync(string id) => ObjectId.TryParse(id, out var key)
         ? await db.Questions.Find(x => x.Id == key).FirstOrDefaultAsync() : null;
@@ -135,7 +135,19 @@ public sealed class QuestionBankService(MongoContext db, UserService users)
             }
         }
         question.UpdatedAt = DateTime.UtcNow;
-        return await SaveAsync(question, request.Revision);
+        var saved = await SaveAsync(question, request.Revision);
+        if (saved && action == "submit")
+        {
+            var subject = await db.Subjects.Find(x => x.Id == question.SubjectId).FirstOrDefaultAsync();
+            if (subject is not null) await notifications.NotifyDepartmentAsync(subject.DepartmentId,
+                "question.review", "Câu hỏi chờ kiểm duyệt", question.Content,
+                $"/app/questions/{question.Id}", user.Id);
+        }
+        else if (saved && action == "review")
+            await notifications.AddAsync(question.OwnerId, "question.reviewed",
+                request.Approve ? "Câu hỏi đã được duyệt" : "Câu hỏi cần chỉnh sửa",
+                request.Approve ? question.Content : question.ReviewComment, $"/app/questions/{question.Id}");
+        return saved;
     }
 
     private async Task<bool> SaveAsync(QuestionBankItem question, int expectedRevision)

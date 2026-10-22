@@ -18,6 +18,16 @@ public sealed class NotificationService(MongoContext db)
             { UserId = id, Type = type, Title = title, Message = message, Link = link }));
     }
 
+    public async Task NotifyDepartmentAsync(ObjectId departmentId, string type, string title, string message,
+        string link, ObjectId? exclude = null)
+    {
+        var ids = await db.Users.Find(x => x.IsActive && (x.Role == Roles.Admin ||
+            (x.Role == Roles.Staff && x.DepartmentId == departmentId))).Project(x => x.Id).ToListAsync();
+        ids = ids.Where(x => x != exclude).Distinct().ToList();
+        if (ids.Count > 0) await db.Notifications.InsertManyAsync(ids.Select(id => new Notification
+            { UserId = id, Type = type, Title = title, Message = message, Link = link }));
+    }
+
     public Task<List<Notification>> ListAsync(ObjectId userId) => db.Notifications.Find(x => x.UserId == userId)
         .SortByDescending(x => x.CreatedAt).Limit(50).ToListAsync();
 

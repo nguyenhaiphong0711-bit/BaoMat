@@ -14,6 +14,9 @@ builder.Services.Configure<MongoSettings>(builder.Configuration.GetSection("Mong
 builder.Services.Configure<SecuritySettings>(builder.Configuration.GetSection("Security"));
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.Configure<VnpaySettings>(builder.Configuration.GetSection("Vnpay"));
+builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("Ai"));
+builder.Services.AddHttpClient();
+builder.Services.AddHealthChecks().AddCheck<MongoHealthCheck>("mongodb");
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
@@ -33,6 +36,7 @@ builder.Services.AddScoped<StudentAcademicService>();
 builder.Services.AddScoped<StaffAcademicService>();
 builder.Services.AddScoped<ResourceService>();
 builder.Services.AddScoped<QuestionBankService>();
+builder.Services.AddScoped<AiQuestionDraftService>();
 builder.Services.AddScoped<QuizService>();
 builder.Services.AddScoped<SupportService>();
 builder.Services.AddScoped<LearningEventService>();
@@ -143,6 +147,8 @@ app.Use(async (context, next) =>
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Redirect("/app/"));
+app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).AllowAnonymous();
+app.MapHealthChecks("/health/ready").AllowAnonymous();
 if (!useReactDevServer)
 {
     if (reactFiles is not null)

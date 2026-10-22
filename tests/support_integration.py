@@ -38,6 +38,7 @@ def support_checks(state):
     tid = ticket['id']
     assert ticket['status'] == 'Open' and ticket['studentName'] == 'Nguyễn Hải Phong'
     assert ticket['departmentName'] != 'Other department' and ticket['assignedStaffId'] is None
+    assert any(x['type']=='support.created' for x in api(staff, '/api/notifications')['items'])
     listed = api(student, '/api/support')['items'][0]
     assert listed['messages'] == []
     outsider = Web(web.base); api(outsider, '/api/auth/login', {'email':'resource-peer@example.test','password':'LibraryTest@123'})
@@ -57,12 +58,14 @@ def support_checks(state):
     request(staff, '/api/support/'+tid, {'revision':staff_view['revision'],'status':'InProgress','assignedStaffId':outside_staff['id']}, method='PUT', expected=403)
     ticket = request(staff, f'/api/support/{tid}/messages', {'revision':staff_view['revision'],'content':'Cán bộ đang kiểm tra quyền truy cập.'})
     assert ticket['status'] == 'InProgress' and ticket['assignedStaffId'] == staff_id
+    assert any(x['type']=='support.replied' for x in api(student, '/api/notifications')['items'])
     request(student, f'/api/support/{tid}/messages', {'revision':staff_view['revision'],'content':'Tin nhắn từ màn hình cũ'}, expected=409)
     passed('only active Staff in the ticket department can see, claim or reply; stale conversation updates are rejected')
 
     ticket = request(student, f'/api/support/{tid}/messages', {'revision':ticket['revision'],'content':'Em đã cung cấp thêm thông tin.'})
     ticket = request(staff, '/api/support/'+tid, {'revision':ticket['revision'],'status':'Resolved','assignedStaffId':staff_id}, method='PUT')
     assert ticket['status'] == 'Resolved'
+    assert any(x['type']=='support.status' for x in api(student, '/api/notifications')['items'])
     ticket = request(student, f'/api/support/{tid}/messages', {'revision':ticket['revision'],'content':'Vấn đề vẫn còn xảy ra.'})
     assert ticket['status'] == 'Open'
     ticket = request(staff, '/api/support/'+tid, {'revision':ticket['revision'],'status':'Closed','assignedStaffId':staff_id}, method='PUT')

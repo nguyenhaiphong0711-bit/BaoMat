@@ -62,6 +62,8 @@ def resource_checks(state):
     passed('shared resources require valid assigned subjects, safe links and owned files; duplicate uploads reuse the same physical file')
 
     r=request(teacher,f'/api/resources/{rid}/submit',{'revision':r['revision']})
+    assert any(x['type']=='resource.review' for x in api(staff,'/api/notifications')['items'])
+    assert all(x['type']!='resource.review' for x in api(student,'/api/notifications')['items'])
     request(teacher,f'/api/resources/{rid}/review',{'revision':r['revision'],'approve':True},expected=403)
     request(web,f'/api/resources/{rid}/review',{'revision':r['revision']-1,'approve':True},expected=409)
     request(teacher,'/api/resources/'+rid,dict(form,revision=r['revision']),method='PUT',expected=400)
@@ -70,6 +72,7 @@ def resource_checks(state):
     mongo('d.Users.updateOne({_id:ObjectId("'+staff_id+'")},{$set:{DepartmentId:ObjectId("'+state['general']['id']+'")}})')
     r=request(staff,f'/api/resources/{rid}/review',{'revision':r['revision'],'approve':True,'comment':'Checked source and license'})
     assert r['state']=='Approved' and r['history'][0]['reviewerName']=='Staff integration'
+    assert any(x['type']=='resource.reviewed' for x in api(teacher,'/api/notifications')['items'])
     assert student.request(file_url)[0]==404
     r=request(teacher,f'/api/resources/{rid}/publish',{'revision':r['revision']})
     for client in (student,peer_client):

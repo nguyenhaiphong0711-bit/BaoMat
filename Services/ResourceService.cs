@@ -6,7 +6,8 @@ using MongoDB.Driver;
 namespace LMS.Services;
 
 // Versions, reviews and the publication pointer share one document for atomic transitions.
-public sealed class ResourceService(MongoContext db, FileStorageService files, UserService users)
+public sealed class ResourceService(MongoContext db, FileStorageService files, UserService users,
+    NotificationService notifications)
 {
     public async Task<LearningResource?> GetAsync(string id)
     {
@@ -173,7 +174,20 @@ public sealed class ResourceService(MongoContext db, FileStorageService files, U
                 default: throw new ArgumentException("Trạng thái không hợp lệ cho thao tác này.");
             }
         }
-        return await SaveAsync(resource, request.Revision);
+        var saved = await SaveAsync(resource, request.Revision);
+        if (saved && action == "submit")
+        {
+            var departments = await db.Subjects.Find(x => version.SubjectIds.Contains(x.Id))
+                .Project(x => x.DepartmentId).ToListAsync();
+            foreach (var department in departments.Distinct())
+                await notifications.NotifyDepartmentAsync(department, "resource.review", "Học liệu chờ kiểm duyệt",
+                    version.Title, $"/app/resources/{resource.Id}", user.Id);
+        }
+        else if (saved && action == "review")
+            await notifications.AddAsync(resource.OwnerId, "resource.reviewed",
+                request.Approve ? "Học liệu đã được duyệt" : "Học liệu cần chỉnh sửa",
+                request.Approve ? version.Title : version.ReviewComment, $"/app/resources/{resource.Id}");
+        return saved;
     }
 
     private async Task<bool> SaveAsync(LearningResource resource, int expectedRevision)

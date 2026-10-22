@@ -46,11 +46,14 @@ def question_checks(state):
     passed('question drafts validate assigned subjects, unique choices and answer bounds; students cannot read the answer bank')
 
     question = request(teacher, f'/api/questions/{qid}/submit', {'revision':question['revision']})
+    assert any(x['type']=='question.review' for x in api(staff, '/api/notifications')['items'])
+    assert all(x['type']!='question.review' for x in api(student, '/api/notifications')['items'])
     request(teacher, f'/api/questions/{qid}/review', {'revision':question['revision'],'approve':True}, expected=403)
     request(web, f'/api/questions/{qid}/review', {'revision':question['revision']-1,'approve':True}, expected=409)
     request(staff, f'/api/questions/{qid}/review', {'revision':question['revision'],'approve':False}, expected=400)
     question = request(staff, f'/api/questions/{qid}/review', {'revision':question['revision'],'approve':False,'comment':'Cần làm rõ lựa chọn đúng'})
     assert question['state'] == 'Rejected' and question['reviewerName'] == 'Staff integration'
+    assert any(x['type']=='question.reviewed' for x in api(teacher, '/api/notifications')['items'])
     question = request(teacher, f'/api/questions/{qid}', dict(form, revision=question['revision'], explanation='Mật khẩu mạnh, riêng biệt và MFA giúp bảo vệ tài khoản.'), method='PUT')
     assert question['state'] == 'Draft' and not question['reviewerName']
     question = request(teacher, f'/api/questions/{qid}/submit', {'revision':question['revision']})
