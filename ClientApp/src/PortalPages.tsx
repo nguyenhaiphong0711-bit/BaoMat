@@ -1,0 +1,95 @@
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { api } from "./api";
+import { useAction, useRemote } from "./hooks";
+import { Alert, Loading } from "./ui";
+import type { Department, Subject } from "./types";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "./auth";
+
+export function StudentRegistrations() {
+  const result = useRemote<any[]>("/api/portal/student/registrations");
+  const action = useAction();
+  if (result.loading) return <Loading />;
+  return <><h1>Đăng ký môn/lớp</h1><Alert message={result.error ?? action.error} />
+    <section className="panel">{result.data?.map(x => <article className="assignment" key={x.classId}>
+      <h2>{x.subjectCode} · {x.subjectName}</h2><p>{x.className} · {x.teacherName} · {x.termName}</p>
+      <small>{x.enrolled}/{x.capacity} sinh viên</small><div className="actions">
+        {x.isPending ? <span className="badge">Chờ duyệt</span> : x.isRegistered
+          ? <button className="button secondary" onClick={() => action.run(s => api(`/api/portal/student/registrations/${x.classId}`, {method:"DELETE",signal:s}), result.reload)}>Rút đăng ký</button>
+          : <button onClick={() => action.run(s => api(`/api/portal/student/registrations/${x.classId}`, {method:"POST",signal:s}), result.reload)}>Gửi đăng ký</button>}
+      </div></article>)}</section></>;
+}
+
+export function StudentAcademic({ tuition = false }: { tuition?: boolean }) {
+  const result = useRemote<any>("/api/portal/student/dashboard");
+  const action = useAction();
+  if (result.loading) return <Loading />;
+  if (result.error) return <Alert message={result.error} />;
+  const data = result.data; if (!data) return null;
+  const pay = (classId:string) => void action.run(s => api<{paymentUrl:string}>(`/api/portal/student/tuition/${classId}/payment`, {method:"POST",signal:s}), x => { window.location.assign(x.paymentUrl); });
+  return <><h1>{tuition ? "Học phí" : "Môn học và tiến độ"}</h1><Alert message={action.error} />
+    <section className="panel"><p><strong>Ngành:</strong> {data.programName || "Chưa gán"} · <strong>Tín chỉ:</strong> {data.totalCredits}</p>
+      {(tuition ? data.tuitionItems : data.courses).map((x:any) => <article className="assignment" key={x.classId}>
+        <h2>{x.subjectCode} · {x.subjectName}</h2><p>{x.className} · {x.termName}</p>
+        {tuition ? <><strong>{Number(x.amountVnd).toLocaleString("vi-VN")} ₫</strong> · {x.status}
+          {x.canPay && <button onClick={() => pay(x.classId)}>Thanh toán VNPAY</button>}</>
+          : <small>{x.credits} tín chỉ · {x.gradedAssignmentCount}/{x.assignmentCount} bài đã chấm · Trung bình {x.averageAssignmentGrade ?? "—"}</small>}
+      </article>)}</section></>;
+}
+
+export function SchedulePage() {
+  const {user}=useAuth();
+  const result = useRemote<any[]>("/api/schedule/sessions");
+  const availability=useRemote<any[]>(user?.role==="Teacher"||user?.role==="Admin"?"/api/schedule/availabilities":null);const action=useAction();
+  const [slot,setSlot]=useState({startAt:"",endAt:"",note:""});
+  if (result.loading) return <Loading />;
+  return <><h1>Lịch học</h1><Alert message={result.error??availability.error??action.error} />
+    {user?.role==="Teacher"&&<section className="panel editor"><h2>Giờ có thể dạy</h2><form onSubmit={e=>{e.preventDefault();void action.run(s=>api("/api/schedule/availabilities",{method:"POST",signal:s,body:slot}),availability.reload);}}><label>Bắt đầu<input required type="datetime-local" value={slot.startAt} onChange={e=>setSlot({...slot,startAt:e.target.value})}/></label><label>Kết thúc<input required type="datetime-local" value={slot.endAt} onChange={e=>setSlot({...slot,endAt:e.target.value})}/></label><label>Ghi chú<input value={slot.note} onChange={e=>setSlot({...slot,note:e.target.value})}/></label><button>Gửi khung giờ</button></form>{availability.data?.map(x=><p key={x.id}>{new Date(x.startAt).toLocaleString("vi-VN")} · <span className="badge">{x.status}</span></p>)}</section>}
+    {user?.role==="Admin"&&<section className="panel"><h2>Duyệt giờ giảng viên</h2>{availability.data?.filter(x=>x.status==="Pending").map(x=><article className="assignment" key={x.id}><p>{new Date(x.startAt).toLocaleString("vi-VN")} – {new Date(x.endAt).toLocaleString("vi-VN")}</p><div className="actions"><button onClick={()=>action.run(s=>api(`/api/schedule/availabilities/${x.id}/review`,{method:"PUT",signal:s,body:{approve:true}}),availability.reload)}>Duyệt</button><button className="button secondary" onClick={()=>action.run(s=>api(`/api/schedule/availabilities/${x.id}/review`,{method:"PUT",signal:s,body:{approve:false}}),availability.reload)}>Từ chối</button></div></article>)}</section>}
+    <section className="panel">
+    {result.data?.length ? result.data.map(x => <article className="assignment" key={x.id}><h2>{x.className} · {x.subjectName}</h2>
+      <p>{new Date(x.startAt).toLocaleString("vi-VN")} – {new Date(x.endAt).toLocaleString("vi-VN")}</p><small>{x.teacherName} · {x.enrolledCount}/{x.capacity}</small>{user?.role==="Student"&&x.status!=="Cancelled"&&<button className="button secondary" onClick={()=>action.run(s=>api(`/api/schedule/sessions/${x.id}/enrollment`,{method:x.isEnrolled?"DELETE":"POST",signal:s}),result.reload)}>{x.isEnrolled?"Hủy đăng ký buổi":"Đăng ký buổi"}</button>}</article>) : <p className="empty">Chưa có buổi học.</p>}
+  </section></>;
+}
+
+export function AdminUsers() {
+  const result = useRemote<any[]>("/api/users"); const action = useAction();
+  const [form,setForm]=useState({fullName:"",email:"",password:"",role:"Student"});
+  const submit=(e:FormEvent)=>{e.preventDefault();void action.run(s=>api("/api/users",{method:"POST",signal:s,body:form}),()=>{setForm({...form,fullName:"",email:"",password:""});result.reload();});};
+  if(result.loading)return <Loading/>; return <><h1>Người dùng</h1><Alert message={result.error??action.error}/>
+    <section className="panel editor"><form onSubmit={submit}><fieldset disabled={action.busy}><label>Họ tên<input required value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})}/></label><label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Mật khẩu<input required minLength={8} type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><label>Vai trò<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option>Student</option><option>Teacher</option><option>Staff</option><option>Admin</option></select></label><button>Tạo tài khoản</button></fieldset></form></section>
+    <section className="panel">{result.data?.map(x=><article className="assignment" key={x.id}><h2>{x.fullName}</h2><p>{x.email} · {x.role}</p><button className="button secondary" onClick={()=>action.run(s=>api(`/api/users/${x.id}/toggle-active`,{method:"POST",signal:s}),result.reload)}>{x.isActive?"Khóa":"Mở khóa"}</button></article>)}</section></>;
+}
+
+export function ClassEditor(){
+  const navigate=useNavigate();const users=useRemote<any[]>("/api/users");const subjects=useRemote<Subject[]>("/api/subjects");const terms=useRemote<any[]>("/api/portal/admin/terms");const action=useAction();
+  const [form,setForm]=useState({name:"",description:"",subjectId:"",teacherId:"",academicTermId:"",enrollmentCapacity:40,studentIds:[] as string[]});
+  const teachers=(users.data??[]).filter(x=>x.role==="Teacher"&&x.isActive);const students=(users.data??[]).filter(x=>x.role==="Student"&&x.isActive);
+  const submit=(e:FormEvent)=>{e.preventDefault();void action.run(s=>api<any>("/api/classes",{method:"POST",signal:s,body:form}),x=>navigate(`/classes/${x.id}`));};
+  if(users.loading||subjects.loading||terms.loading)return <Loading/>;
+  return <><h1>Tạo lớp học</h1><Alert message={users.error??subjects.error??terms.error??action.error}/><section className="panel editor"><form onSubmit={submit}><fieldset disabled={action.busy}>
+    <label>Tên lớp<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Mô tả<textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label>
+    <label>Môn học<select required value={form.subjectId} onChange={e=>setForm({...form,subjectId:e.target.value})}><option value="">Chọn môn</option>{subjects.data?.map(x=><option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>
+    <label>Giảng viên<select required value={form.teacherId} onChange={e=>setForm({...form,teacherId:e.target.value})}><option value="">Chọn giảng viên</option>{teachers.map(x=><option key={x.id} value={x.id}>{x.fullName}</option>)}</select></label>
+    <label>Học kỳ<select value={form.academicTermId} onChange={e=>setForm({...form,academicTermId:e.target.value})}><option value="">Học kỳ đang hoạt động</option>{terms.data?.map(x=><option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>
+    <label>Sĩ số tối đa<input type="number" min={1} max={500} value={form.enrollmentCapacity} onChange={e=>setForm({...form,enrollmentCapacity:Number(e.target.value)})}/></label>
+    <fieldset><legend>Sinh viên ban đầu</legend>{students.map(x=><label key={x.id}><input type="checkbox" checked={form.studentIds.includes(x.id)} onChange={e=>setForm({...form,studentIds:e.target.checked?[...form.studentIds,x.id]:form.studentIds.filter(id=>id!==x.id)})}/>{x.fullName} · {x.email}</label>)}</fieldset>
+    <button>{action.busy?"Đang tạo…":"Tạo lớp"}</button></fieldset></form></section></>;
+}
+
+export function AdminDepartments() {
+  const result=useRemote<Department[]>("/api/departments");const action=useAction();const [form,setForm]=useState({code:"",name:"",description:""});
+  const submit=(e:FormEvent)=>{e.preventDefault();void action.run(s=>api("/api/departments",{method:"POST",signal:s,body:form}),()=>{setForm({code:"",name:"",description:""});result.reload();});};
+  return <><h1>Khoa/Viện</h1><Alert message={result.error??action.error}/><section className="panel editor"><form onSubmit={submit}><label>Mã khoa<input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></label><label>Tên khoa<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Mô tả<textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label><button>Thêm khoa</button></form></section><section className="panel">{result.data?.map(x=><article className="assignment" key={x.id}><h2>{x.code} · {x.name}</h2><p>{x.description}</p><button className="button text danger" onClick={()=>action.run(s=>api(`/api/departments/${x.id}`,{method:"DELETE",signal:s}),result.reload)}>Xóa</button></article>)}</section></>;
+}
+
+export function AdminRegistrationReviews(){const r=useRemote<any[]>("/api/portal/admin/registration-reviews");const a=useAction();return <><h1>Duyệt đăng ký</h1><Alert message={r.error??a.error}/><section className="panel">{r.data?.map(x=><article className="assignment" key={x.registrationId}><h2>{x.studentName} · {x.subjectName}</h2><p>{x.className} · {x.termName}</p><div className="actions"><button onClick={()=>a.run(s=>api(`/api/portal/admin/registration-reviews/${x.registrationId}`,{method:"POST",signal:s,body:{approve:true}}),r.reload)}>Duyệt</button><button className="button secondary" onClick={()=>a.run(s=>api(`/api/portal/admin/registration-reviews/${x.registrationId}`,{method:"POST",signal:s,body:{approve:false}}),r.reload)}>Từ chối</button></div></article>)}</section></>}
+
+export function AdminLogs(){const r=useRemote<any[]>("/api/portal/admin/activity-logs");return <><h1>Nhật ký hoạt động</h1><Alert message={r.error}/><section className="panel">{r.data?.map(x=><article className="assignment" key={x.id}><strong>{x.action} · {x.success?"Thành công":"Thất bại"}</strong><p>{x.email} · {x.message}</p><small>{new Date(x.createdAt).toLocaleString("vi-VN")} · {x.ipAddress}</small></article>)}</section></>}
+
+export function AdminTerms(){const r=useRemote<any[]>("/api/portal/admin/terms");const a=useAction();const today=new Date().toISOString().slice(0,10);const [f,setF]=useState<any>({id:"",code:"",name:"",academicYear:"",semesterNumber:1,startsAt:today,endsAt:today,registrationOpensAt:today,registrationClosesAt:today,tuitionPerCredit:0,isActive:false});const submit=(e:FormEvent)=>{e.preventDefault();void a.run(s=>api("/api/portal/admin/terms",{method:"POST",signal:s,body:f}),()=>{r.reload();});};return <><h1>Học kỳ</h1><Alert message={r.error??a.error}/><section className="panel editor"><form onSubmit={submit}><label>Mã<input required value={f.code} onChange={e=>setF({...f,code:e.target.value})}/></label><label>Tên<input required value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></label><label>Năm học<input required value={f.academicYear} onChange={e=>setF({...f,academicYear:e.target.value})}/></label><label>Học kỳ<input type="number" min={1} max={3} value={f.semesterNumber} onChange={e=>setF({...f,semesterNumber:Number(e.target.value)})}/></label><label>Bắt đầu<input type="date" value={f.startsAt} onChange={e=>setF({...f,startsAt:e.target.value})}/></label><label>Kết thúc<input type="date" value={f.endsAt} onChange={e=>setF({...f,endsAt:e.target.value})}/></label><label>Mở đăng ký<input type="date" value={f.registrationOpensAt} onChange={e=>setF({...f,registrationOpensAt:e.target.value})}/></label><label>Đóng đăng ký<input type="date" value={f.registrationClosesAt} onChange={e=>setF({...f,registrationClosesAt:e.target.value})}/></label><label>Học phí/tín chỉ<input type="number" min={0} value={f.tuitionPerCredit} onChange={e=>setF({...f,tuitionPerCredit:Number(e.target.value)})}/></label><label><input type="checkbox" checked={f.isActive} onChange={e=>setF({...f,isActive:e.target.checked})}/> Đang hoạt động</label><button>Lưu học kỳ</button></form></section><section className="panel">{r.data?.map(x=><article className="assignment" key={x.id}><h2>{x.code} · {x.name}</h2><p>{x.academicYear} · Học kỳ {x.semesterNumber}</p><small>{new Date(x.startsAt).toLocaleDateString("vi-VN")} – {new Date(x.endsAt).toLocaleDateString("vi-VN")} · {Number(x.tuitionPerCredit).toLocaleString("vi-VN")} ₫/tín chỉ</small></article>)}</section></>}
+
+export function AdminPrograms(){const r=useRemote<any[]>("/api/portal/admin/programs");const d=useRemote<Department[]>("/api/departments");const a=useAction();const [f,setF]=useState({id:"",departmentId:"",code:"",name:"",description:"",curriculum:[]});const submit=(e:FormEvent)=>{e.preventDefault();void a.run(s=>api("/api/portal/admin/programs",{method:"POST",signal:s,body:f}),r.reload);};return <><h1>Ngành học</h1><Alert message={r.error??d.error??a.error}/><section className="panel editor"><form onSubmit={submit}><label>Khoa<select required value={f.departmentId} onChange={e=>setF({...f,departmentId:e.target.value})}><option value="">Chọn khoa</option>{d.data?.map(x=><option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label><label>Mã ngành<input required value={f.code} onChange={e=>setF({...f,code:e.target.value})}/></label><label>Tên ngành<input required value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></label><label>Mô tả<textarea value={f.description} onChange={e=>setF({...f,description:e.target.value})}/></label><button>Lưu ngành</button></form></section><section className="panel">{r.data?.map(x=><article className="assignment" key={x.id}><h2>{x.code} · {x.name}</h2><p>{x.description}</p><span className="badge">{x.isActive?"Đang hoạt động":"Đã lưu trữ"}</span> <button className="button secondary" onClick={()=>a.run(s=>api(`/api/portal/admin/programs/${x.id}/active`,{method:"POST",signal:s,body:{isActive:!x.isActive}}),r.reload)}>{x.isActive?"Lưu trữ":"Mở lại"}</button></article>)}</section></>}
+
+export function AdminPermissions(){const r=useRemote<any>("/api/portal/admin/permissions");const a=useAction();const [selected,setSelected]=useState("");if(r.loading)return <Loading/>;const user=r.data?.users.find((x:any)=>x.id===(selected||r.data?.users[0]?.id));if(!user)return <Alert message={r.error??"Chưa có tài khoản để phân quyền."}/>;const save=(codes:string[])=>a.run(s=>api(`/api/portal/admin/permissions/${user.id}`,{method:"PUT",signal:s,body:{userId:user.id,permissionCodes:codes,departmentId:user.departmentId??"",programId:user.programId??"",currentSemester:user.currentSemester,teachingSubjectIds:user.teachingSubjectIds}}),r.reload);return <><h1>Phân quyền</h1><Alert message={r.error??a.error}/><section className="panel editor"><label>Tài khoản<select value={user.id} onChange={e=>setSelected(e.target.value)}>{r.data.users.map((x:any)=><option key={x.id} value={x.id}>{x.fullName} · {x.role}</option>)}</select></label><fieldset><legend>Quyền chức năng</legend>{r.data.permissions.filter((p:any)=>p.allowedRoles.includes(user.role)).map((p:any)=><label key={p.code}><input type="checkbox" checked={user.permissionCodes.includes(p.code)} onChange={e=>save(e.target.checked?[...user.permissionCodes,p.code]:user.permissionCodes.filter((c:string)=>c!==p.code))}/>{p.name} <small>{p.code}</small></label>)}</fieldset></section></>}

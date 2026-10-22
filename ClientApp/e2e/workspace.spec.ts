@@ -74,7 +74,7 @@ test("Admin can create, edit, search and delete a subject; deep links survive re
   expect(errors).toEqual([]);
 });
 
-test("cookie session survives reload, works on Razor pages, and logout revokes it", async ({
+test("cookie session survives reload and React routes; logout revokes it", async ({
   page,
 }) => {
   await login(page, adminEmail, adminPassword);
@@ -83,11 +83,10 @@ test("cookie session survives reload, works on Razor pages, and logout revokes i
     page.getByRole("link", { name: "Phân quyền", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Phân quyền", exact: true }).click();
-  await expect(page).toHaveURL(/\/Permission\/Index/);
-  await page.getByRole("link", { name: /Không gian React/ }).click();
-  await expect(
-    page.getByRole("heading", { name: /một ngày học tập mới/ }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/admin\/permissions/);
+  await expect(page.getByRole("heading", { name: "Phân quyền" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Phân quyền" })).toBeVisible();
   const cookies = await page.context().cookies();
   expect(
     cookies.some(

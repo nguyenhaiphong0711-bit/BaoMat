@@ -29,7 +29,7 @@ Lỗi `npm` không tồn tại: cài Node.js rồi mở lại VS Code/Terminal �
 - Sinh viên: nộp nội dung hoặc tệp, nộp lại, xem điểm và nhận xét.
 - Giáo viên: xem bài nộp, tải tệp, chấm điểm và nhận xét trong lớp được phân công.
 
-Các màn hình tạo/sửa lớp, lịch, học vụ, học phí, người dùng và phân quyền vẫn dùng Razor hiện có. React dẫn tới đúng trang đó với cùng phiên đăng nhập. Thanh bên Razor có liên kết “Không gian React” để quay lại. Đây là chuyển đổi từng phần, chưa phải thay thế toàn bộ Razor.
+Toàn bộ điều hướng nghiệp vụ dùng React: lớp, lịch, đăng ký học, tiến độ, học phí, người dùng, phân quyền, khoa, ngành, học kỳ, duyệt đăng ký và nhật ký. Các URL Razor cũ được chuyển hướng sang route React tương ứng để bookmark cũ tiếp tục hoạt động. View Razor còn trong source chỉ phục vụ tương thích kiểm thử/POST cũ và trang lỗi máy chủ; người dùng không còn được điều hướng tới chúng từ ứng dụng.
 
 ## Cấu trúc để học và mở rộng
 

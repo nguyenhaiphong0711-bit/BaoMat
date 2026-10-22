@@ -113,6 +113,26 @@ app.Use(async (context, next) =>
     await next();
 });
 app.UseStaticFiles();
+var reactRedirects = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+{
+    ["/Dashboard/Index"] = "/app/", ["/User/Index"] = "/app/admin/users",
+    ["/User/Create"] = "/app/admin/users", ["/Department/Index"] = "/app/admin/departments",
+    ["/AcademicProgram/Index"] = "/app/admin/programs", ["/AcademicTerm/Index"] = "/app/admin/terms",
+    ["/ActivityLog/Index"] = "/app/admin/logs",
+    ["/CourseRegistrationAdmin/Index"] = "/app/admin/registrations",
+    ["/TeachingAssignment/Index"] = "/app/classes", ["/TeachingAssignment/TeacherSubjects"] = "/app/admin/permissions",
+    ["/Class/Index"] = "/app/classes", ["/Class/Create"] = "/app/classes/new",
+    ["/Subject/Index"] = "/app/subjects", ["/Schedule/Index"] = "/app/schedule",
+    ["/Schedule/Availability"] = "/app/schedule", ["/Schedule/AvailabilityRequests"] = "/app/schedule",
+    ["/CourseRegistration/Index"] = "/app/registrations", ["/StudentAcademic/Progress"] = "/app/progress",
+    ["/StudentAcademic/Tuition"] = "/app/tuition"
+};
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method) && reactRedirects.TryGetValue(context.Request.Path, out var target))
+    { context.Response.Redirect(target + context.Request.QueryString); return; }
+    await next();
+});
 var reactRoot = Path.Combine(app.Environment.ContentRootPath, "ClientApp", "dist");
 if (!Directory.Exists(reactRoot)) reactRoot = Path.Combine(app.Environment.WebRootPath, "app");
 PhysicalFileProvider? reactFiles = Directory.Exists(reactRoot) ? new PhysicalFileProvider(reactRoot) : null;

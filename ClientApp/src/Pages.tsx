@@ -187,12 +187,12 @@ export function Dashboard() {
           <strong>Xem danh mục →</strong>
         </Link>
         {can(user, "schedule.view") && (
-          <a className="panel quick" href="/Schedule/Index">
+          <Link className="panel quick" to="/schedule">
             <span>◷</span>
             <h3>Lịch học</h3>
             <p>Theo dõi các buổi học và lịch giảng dạy.</p>
             <strong>Xem lịch →</strong>
-          </a>
+          </Link>
         )}
       </div>
     </>
@@ -527,9 +527,9 @@ export function Classes() {
         description="Các lớp bạn được tham gia hoặc quản lý."
       >
         {user.role === "Admin" && (
-          <a className="button" href="/Class/Create">
+          <Link className="button" to="/classes/new">
             + Tạo lớp học
-          </a>
+          </Link>
         )}
       </Heading>
       <RemoteError error={classes.error} retry={classes.reload} />

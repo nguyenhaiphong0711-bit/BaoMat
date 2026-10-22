@@ -57,6 +57,18 @@ def operation_checks(state):
     assert time.monotonic() - started < 30
     passed('96 concurrent authenticated and health reads complete without errors')
 
+    student_dashboard = api(student, '/api/portal/student/dashboard')
+    assert 'courses' in student_dashboard and 'tuitionItems' in student_dashboard
+    assert isinstance(api(student, '/api/portal/student/registrations'), list)
+    api(teacher, '/api/portal/student/dashboard', expected=403)
+    assert isinstance(api(web, '/api/portal/admin/terms'), list)
+    assert isinstance(api(web, '/api/portal/admin/programs'), list)
+    assert isinstance(api(web, '/api/portal/admin/registration-reviews'), list)
+    permissions = api(web, '/api/portal/admin/permissions')
+    assert {'users','permissions','departments','programs','subjects'} <= permissions.keys()
+    api(student, '/api/portal/admin/activity-logs', expected=403)
+    passed('React portal APIs expose student/admin workflows and enforce role boundaries')
+
     limited = Web(web.base)
     statuses = []
     for _ in range(70):

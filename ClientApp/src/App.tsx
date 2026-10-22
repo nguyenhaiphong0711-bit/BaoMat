@@ -33,6 +33,8 @@ import { Quizzes, QuizDetail, QuizEditor, QuizAttemptPage } from "./QuizPages";
 import { SupportTickets, SupportCreate, SupportDetail } from "./SupportPages";
 import { LearningReports } from "./ReportPage";
 import { CourseOpenings, Notifications } from "./WorkflowPages";
+import { AdminDepartments, AdminLogs, AdminPrograms, AdminRegistrationReviews, AdminTerms,
+  AdminUsers, AdminPermissions, ClassEditor, SchedulePage, StudentAcademic, StudentRegistrations } from "./PortalPages";
 
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
@@ -61,12 +63,6 @@ function Workspace() {
       setBusy(false);
     }
   };
-  const legacy = (href: string, label: string) => (
-    <a href={href}>
-      {label}
-      <span aria-hidden="true">↗</span>
-    </a>
-  );
   return (
     <div className="workspace">
       <button
@@ -120,31 +116,31 @@ function Workspace() {
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
           </NavLink>
-          {can(user, "schedule.view") && legacy("/Schedule/Index", "Lịch học")}
+          {can(user, "schedule.view") && <NavLink to="/schedule">Lịch học</NavLink>}
           {user.role === "Student" && (
             <>
               {can(user, "course-registration.view") &&
-                legacy("/CourseRegistration/Index", "Đăng ký môn/lớp")}
+                <NavLink to="/registrations">Đăng ký môn/lớp</NavLink>}
               {can(user, "student-progress.view") &&
-                legacy("/StudentAcademic/Progress", "Môn học & điểm")}
+                <NavLink to="/progress">Môn học & điểm</NavLink>}
               {can(user, "tuition.view") &&
-                legacy("/StudentAcademic/Tuition", "Học phí")}
+                <NavLink to="/tuition">Học phí</NavLink>}
             </>
           )}
           {user.role === "Teacher" &&
             can(user, "schedule.availability") &&
-            legacy("/Schedule/Availability", "Giờ có thể dạy")}
+            <NavLink to="/schedule">Giờ có thể dạy</NavLink>}
           {user.role === "Admin" && (
             <>
               <p className="nav-caption">QUẢN TRỊ</p>
-              {legacy("/Department/Index", "Khoa")}
-              {legacy("/AcademicProgram/Index", "Ngành học")}
-              {legacy("/AcademicTerm/Index", "Học kỳ")}
-              {legacy("/User/Index", "Người dùng")}
-              {legacy("/Permission/Index", "Phân quyền")}
-              {legacy("/CourseRegistrationAdmin/Index", "Duyệt đăng ký")}
-              {legacy("/TeachingAssignment/Index", "Phân công giảng dạy")}
-              {legacy("/ActivityLog/Index", "Nhật ký hoạt động")}
+              <NavLink to="/admin/departments">Khoa</NavLink>
+              <NavLink to="/admin/programs">Ngành học</NavLink>
+              <NavLink to="/admin/terms">Học kỳ</NavLink>
+              <NavLink to="/admin/users">Người dùng</NavLink>
+              <NavLink to="/admin/permissions">Phân quyền</NavLink>
+              <NavLink to="/admin/registrations">Duyệt đăng ký</NavLink>
+              <NavLink to="/classes">Lớp & phân công</NavLink>
+              <NavLink to="/admin/logs">Nhật ký hoạt động</NavLink>
             </>
           )}
         </nav>
@@ -212,12 +208,24 @@ export function App() {
         <Route path="reports" element={<LearningReports />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="course-openings" element={<CourseOpenings />} />
+        <Route path="schedule" element={<SchedulePage />} />
+        <Route path="registrations" element={<StudentRegistrations />} />
+        <Route path="progress" element={<StudentAcademic />} />
+        <Route path="tuition" element={<StudentAcademic tuition />} />
+        <Route path="admin/users" element={<AdminUsers />} />
+        <Route path="admin/permissions" element={<AdminPermissions />} />
+        <Route path="admin/departments" element={<AdminDepartments />} />
+        <Route path="admin/programs" element={<AdminPrograms />} />
+        <Route path="admin/terms" element={<AdminTerms />} />
+        <Route path="admin/registrations" element={<AdminRegistrationReviews />} />
+        <Route path="admin/logs" element={<AdminLogs />} />
         <Route
           path="resources/:resourceId/versions/:version"
           element={<ResourceDetail />}
         />
         <Route path="subjects" element={<Subjects />} />
         <Route path="classes" element={<Classes />} />
+        <Route path="classes/new" element={<ClassEditor />} />
         <Route path="classes/:id" element={<ClassDetail />} />
         <Route path="classes/:classId/lessons/new" element={<LessonEditor />} />
         <Route path="lessons/:lessonId/edit" element={<LessonEditor />} />
