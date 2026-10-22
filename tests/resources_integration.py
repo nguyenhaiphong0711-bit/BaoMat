@@ -76,6 +76,9 @@ def resource_checks(state):
         view=api(client,'/api/resources/'+rid)
         assert view['state']=='Published' and view['history']==[] and not view['canEdit']
         assert client.request(file_url)==(200,'Shared resource file')
+    api(student,'/api/resources/'+rid)
+    assert student.request(file_url)==(200,'Shared resource file')
+    assert int(mongo('print(d.LearningEvents.countDocuments({ActorId:ObjectId("'+state['student_id']+'"),Type:{$in:["resource.viewed","resource.downloaded"]}}))'))==2
     api(outside,'/api/resources/'+rid,expected=404)
     assert 'Shared resource file' not in teacher.request('/File/Download/'+file['id'])[1]
     mongo('d.Users.updateOne({_id:ObjectId("'+state['student_id']+'")},{$pull:{PermissionCodes:"resources.view"}})')

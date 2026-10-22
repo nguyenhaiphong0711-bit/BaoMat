@@ -32,6 +32,7 @@ import { Questions, QuestionDetail, QuestionEditor } from "./QuestionPages";
 import { Quizzes, QuizDetail, QuizEditor, QuizAttemptPage } from "./QuizPages";
 import { SupportTickets, SupportCreate, SupportDetail } from "./SupportPages";
 import { LearningReports } from "./ReportPage";
+import { CourseOpenings, Notifications } from "./WorkflowPages";
 
 function Workspace() {
   const { user, status, signOut, error, reload } = useAuth();
@@ -111,6 +112,10 @@ function Workspace() {
           )}
           {can(user, "reports.view") && (
             <NavLink to="/reports">Báo cáo học tập</NavLink>
+          )}
+          <NavLink to="/notifications">Thông báo</NavLink>
+          {(user.role === "Teacher" || user.role === "Admin") && (
+            <NavLink to="/course-openings">Đề xuất mở lớp</NavLink>
           )}
           <NavLink to="/subjects">
             <span aria-hidden="true">▦</span>Môn học
@@ -205,6 +210,8 @@ export function App() {
         <Route path="support/new" element={<SupportCreate />} />
         <Route path="support/:ticketId" element={<SupportDetail />} />
         <Route path="reports" element={<LearningReports />} />
+        <Route path="notifications" element={<Notifications />} />
+        <Route path="course-openings" element={<CourseOpenings />} />
         <Route
           path="resources/:resourceId/versions/:version"
           element={<ResourceDetail />}

@@ -9,7 +9,7 @@ Trang `/app/reports` tính số liệu trực tiếp từ MongoDB theo tài kho�
 
 Quyền `reports.view` cho phép mở báo cáo, nhưng phạm vi cuối cùng luôn bị giới hạn tiếp bởi vai trò và quan hệ lớp/khoa ở server. Khoa đã lưu trữ hoặc cán bộ chưa được gắn khoa sẽ không có báo cáo khoa.
 
-Collection `LearningEvents` ghi các mốc có cấu trúc hoàn thành/mở lại bài học, bắt đầu/nộp bài kiểm tra, tạo/trả lời/đổi trạng thái yêu cầu hỗ trợ. Sự kiện chỉ chứa loại, mã thực thể, phạm vi, thời gian và mô tả ngắn. Hệ thống không sao chép đáp án, nội dung hội thoại, mật khẩu, tệp hoặc nhận xét chấm bài vào sự kiện. Các sự kiện chỉ bắt đầu được ghi từ phiên bản này; dữ liệu cũ vẫn được tính trong chỉ số tổng hợp nhưng không có dòng thời gian hồi tố.
+Collection `LearningEvents` ghi các mốc có cấu trúc hoàn thành/mở lại bài học, xem/tải học liệu, bắt đầu/nộp bài kiểm tra, tạo/trả lời/đổi trạng thái yêu cầu hỗ trợ. Lượt xem và tải học liệu được gộp theo người, tài nguyên, loại hoạt động và ngày để tránh việc tải lại trang làm tăng số liệu; các lượt này không được coi là đã hoàn thành nội dung. Sự kiện chỉ chứa loại, mã thực thể, phạm vi, thời gian và mô tả ngắn. Hệ thống không sao chép đáp án, nội dung hội thoại, mật khẩu, tệp hoặc nhận xét chấm bài vào sự kiện.
 
 Với tài khoản cũ, Admin cấp `reports.view` cho người cần xem báo cáo. Tài khoản mới của Teacher, Student và Staff nhận quyền mặc định theo vai trò.
 

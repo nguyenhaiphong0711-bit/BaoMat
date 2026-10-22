@@ -12,6 +12,28 @@ public sealed class LearningEventService(MongoContext db)
         db.LearningEvents.InsertOneAsync(new LearningEvent { Type = type, ActorId = actor.Id,
             ActorRole = actor.Role, EntityType = entityType, EntityId = entityId, Summary = summary,
             StudentId = studentId, DepartmentId = departmentId, ClassId = classId });
+
+    public async Task RecordDailyAsync(string type, User actor, string entityType, ObjectId entityId, string summary,
+        ObjectId? studentId = null, ObjectId? departmentId = null, ObjectId? classId = null)
+    {
+        var now = DateTime.UtcNow;
+        var key = $"{type}:{actor.Id}:{entityId}:{now:yyyyMMdd}";
+        try
+        {
+            await db.LearningEvents.UpdateOneAsync(x => x.EventKey == key,
+                Builders<LearningEvent>.Update
+                    .SetOnInsert(x => x.EventKey, key).SetOnInsert(x => x.Type, type)
+                    .SetOnInsert(x => x.ActorId, actor.Id).SetOnInsert(x => x.ActorRole, actor.Role)
+                    .SetOnInsert(x => x.EntityType, entityType).SetOnInsert(x => x.EntityId, entityId)
+                    .SetOnInsert(x => x.Summary, summary).SetOnInsert(x => x.StudentId, studentId)
+                    .SetOnInsert(x => x.DepartmentId, departmentId).SetOnInsert(x => x.ClassId, classId)
+                    .SetOnInsert(x => x.OccurredAt, now), new UpdateOptions { IsUpsert = true });
+        }
+        catch (MongoWriteException error) when (error.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // A simultaneous view/download already inserted the same daily event.
+        }
+    }
 }
 
 public sealed class LearningReportService(MongoContext db)
@@ -60,6 +82,8 @@ public sealed class LearningReportService(MongoContext db)
             metrics.Add(new("assignments", "Bài tập đã công bố", assignmentIds.Count, "bài"));
             metrics.Add(new("submissions", "Bài đã nộp", await db.Submissions.CountDocumentsAsync(x => x.StudentId == user.Id && assignmentIds.Contains(x.AssignmentId)), "bài"));
             metrics.Add(new("lessonsCompleted", "Bài học đã hoàn thành", await db.LessonCompletions.CountDocumentsAsync(x => x.StudentId == user.Id), "bài"));
+            metrics.Add(new("resourceActivity", "Học liệu đã xem hoặc tải", await db.LearningEvents.CountDocumentsAsync(x =>
+                x.StudentId == user.Id && (x.Type == "resource.viewed" || x.Type == "resource.downloaded")), "lượt/ngày"));
             metrics.Add(new("quizAverage", "Điểm kiểm tra trung bình", Average(attempts), "điểm"));
             eventFilter = Builders<LearningEvent>.Filter.Or(
                 Builders<LearningEvent>.Filter.Eq(x => x.StudentId, user.Id),

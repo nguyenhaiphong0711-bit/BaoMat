@@ -59,7 +59,7 @@ Mở `http://localhost:5000`.
 
 Sau khi pull bản mới, từ thư mục dự án chỉ cần `dotnet run`: ứng dụng tự cài dependency frontend khi cần, build React và chạy Vite cùng ASP.NET. Mở `http://localhost:5000` để vào giao diện mới. Giữ nguyên MongoDB và `.env` hiện có. Máy phát triển cần Node.js; máy chạy bản publish không cần Node.js.
 
-React hiện hỗ trợ đăng nhập/OTP, dashboard, môn học, lớp, bài học và tệp đính kèm, bài tập, nộp bài và chấm điểm. Các nghiệp vụ lịch/học vụ/quản trị còn lại dùng trang Razor hiện có, dùng chung phiên đăng nhập. Xem [FRONTEND.md](FRONTEND.md) để biết cấu trúc Context + reducer, cách chạy, publish, kiểm thử và phạm vi chuyển đổi.
+React hiện hỗ trợ đăng nhập/OTP, dashboard, môn học, lớp, bài học và tiến độ, bài tập, quiz, kho học liệu, hỗ trợ người học, báo cáo, đề xuất mở lớp và thông báo cá nhân. Các nghiệp vụ lịch/học vụ/quản trị còn lại dùng trang Razor hiện có, dùng chung phiên đăng nhập. Xem [FRONTEND.md](FRONTEND.md) về cấu trúc Context + reducer và [WORKFLOWS.md](WORKFLOWS.md) về quy trình mở lớp.
 
 ## Theo dõi học tập và thanh toán học phí
 Sinh viên gửi yêu cầu đăng ký lớp; Admin duyệt tại mục **Duyệt đăng ký**. Chỉ yêu cầu được duyệt mới ghi danh sinh viên vào lớp và tạo hóa đơn. Sinh viên xem môn đang học, tín chỉ đã ghi danh và điểm trung bình các bài tập đã chấm tại **Môn học & điểm**. Điểm này chỉ là trung bình bài tập, chưa phải điểm tổng kết môn có trọng số. Mục **Học phí** hiển thị từng hóa đơn theo lớp/môn. Khi Admin cấu hình đơn giá mỗi tín chỉ trong mục **Học kỳ**, hệ thống tính hóa đơn lúc yêu cầu được duyệt; hóa đơn giữ snapshot đơn giá đó kể cả khi Admin cập nhật biểu phí sau này. Việc rút khỏi lớp đã thanh toán cần Admin xử lý do chưa tích hợp hoàn tiền.

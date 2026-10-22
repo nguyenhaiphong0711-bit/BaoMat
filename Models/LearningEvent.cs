@@ -15,6 +15,7 @@ public sealed class LearningEvent
     public string EntityType { get; set; } = "";
     public ObjectId EntityId { get; set; }
     public string Summary { get; set; } = "";
+    public string EventKey { get; set; } = "";
     public DateTime OccurredAt { get; set; } = DateTime.UtcNow;
 }
 

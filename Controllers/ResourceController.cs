@@ -11,7 +11,8 @@ using MongoDB.Driver.GridFS;
 namespace LMS.Controllers;
 
 [ApiController, Route("api/resources"), Authorize, RequirePermission(PermissionCodes.ResourcesView)]
-public sealed class ResourceController(ResourceService resources, UserService users, FileStorageService files) : ControllerBase
+public sealed class ResourceController(ResourceService resources, UserService users, FileStorageService files,
+    LearningEventService events) : ControllerBase
 {
     private Task<User?> CurrentAsync() => users.GetAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "");
 
@@ -39,7 +40,11 @@ public sealed class ResourceController(ResourceService resources, UserService us
         var user = await CurrentAsync(); var resource = await resources.GetAsync(id);
         if (user is null) return Unauthorized();
         var visible = resource is null ? null : await resources.VisibleVersionAsync(user, resource, version);
-        return visible is null ? NotFound() : Ok(await resources.ToResponseAsync(user, resource!, visible));
+        if (visible is null) return NotFound();
+        if (user.Role == Roles.Student)
+            await events.RecordDailyAsync("resource.viewed", user, "LearningResource", resource!.Id,
+                $"Đã xem học liệu: {visible.Title}", user.Id, user.DepartmentId);
+        return Ok(await resources.ToResponseAsync(user, resource!, visible));
     }
 
     [HttpPost, Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.ResourcesManage), ValidateAntiForgeryToken]
@@ -107,7 +112,14 @@ public sealed class ResourceController(ResourceService resources, UserService us
         var visible = await resources.VisibleVersionAsync(user, resource, version);
         var file = visible?.Files.FirstOrDefault(f => f.Id == parsed);
         if (file is null) return NotFound();
-        try { return File(await files.OpenDownloadStreamAsync(parsed), file.ContentType, file.FileName); }
+        try
+        {
+            var stream = await files.OpenDownloadStreamAsync(parsed);
+            if (user.Role == Roles.Student)
+                await events.RecordDailyAsync("resource.downloaded", user, "LearningResource", resource.Id,
+                    $"Đã tải tệp học liệu: {file.FileName}", user.Id, user.DepartmentId);
+            return File(stream, file.ContentType, file.FileName);
+        }
         catch (GridFSFileNotFoundException) { return NotFound(); }
     }
 }

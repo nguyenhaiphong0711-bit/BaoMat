@@ -31,6 +31,7 @@ test("quiz React: teacher assigns published questions and student receives serve
     await teacher
       .getByRole("link", { name: "+ Tạo bài kiểm tra", exact: true })
       .click();
+    await teacher.getByLabel("Lớp học").selectOption({ label: "Regression class" });
     await teacher
       .getByLabel("Tiêu đề", { exact: true })
       .fill("React quiz workflow");

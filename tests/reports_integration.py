@@ -7,6 +7,7 @@ from resources_integration import resource_checks
 from questions_integration import question_checks
 from quizzes_integration import quiz_checks
 from support_integration import support_checks
+from course_openings_integration import course_opening_checks
 
 
 def report_checks(state):
@@ -57,7 +58,7 @@ def report_checks(state):
 
 
 def extra_checks(state):
-    staff_checks(state); resource_checks(state); question_checks(state); quiz_checks(state); support_checks(state); report_checks(state)
+    staff_checks(state); resource_checks(state); question_checks(state); quiz_checks(state); support_checks(state); report_checks(state); course_opening_checks(state)
 
 
 if __name__ == '__main__':

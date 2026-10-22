@@ -39,6 +39,8 @@ public class MongoContext
     public IMongoCollection<QuizAttempt> QuizAttempts => _database.GetCollection<QuizAttempt>("QuizAttempts");
     public IMongoCollection<SupportTicket> SupportTickets => _database.GetCollection<SupportTicket>("SupportTickets");
     public IMongoCollection<LearningEvent> LearningEvents => _database.GetCollection<LearningEvent>("LearningEvents");
+    public IMongoCollection<CourseOpeningRequest> CourseOpeningRequests => _database.GetCollection<CourseOpeningRequest>("CourseOpeningRequests");
+    public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
     public IMongoCollection<PermissionMigration> PermissionMigrations => _database.GetCollection<PermissionMigration>("PermissionMigrations");
     public IMongoCollection<Permission> Permissions => _database.GetCollection<Permission>("Permissions");
     public IMongoCollection<AcademicProgram> AcademicPrograms => _database.GetCollection<AcademicProgram>("AcademicPrograms");
@@ -86,6 +88,19 @@ public class MongoContext
             Builders<SupportTicket>.IndexKeys.Ascending(x => x.DepartmentId).Descending(x => x.UpdatedAt)));
         LearningEvents.Indexes.CreateOne(new CreateIndexModel<LearningEvent>(
             Builders<LearningEvent>.IndexKeys.Descending(x => x.OccurredAt)));
+        LearningEvents.Indexes.CreateOne(new CreateIndexModel<LearningEvent>(
+            Builders<LearningEvent>.IndexKeys.Ascending(x => x.EventKey),
+            new CreateIndexOptions<LearningEvent> { Unique = true,
+                PartialFilterExpression = Builders<LearningEvent>.Filter.Gt(x => x.EventKey, "") }));
+        CourseOpeningRequests.Indexes.CreateOne(new CreateIndexModel<CourseOpeningRequest>(
+            Builders<CourseOpeningRequest>.IndexKeys.Descending(x => x.CreatedAt)));
+        CourseOpeningRequests.Indexes.CreateOne(new CreateIndexModel<CourseOpeningRequest>(
+            Builders<CourseOpeningRequest>.IndexKeys.Ascending(x => x.TeacherId).Ascending(x => x.SubjectId)
+                .Ascending(x => x.AcademicTermId),
+            new CreateIndexOptions<CourseOpeningRequest> { Unique = true,
+                PartialFilterExpression = Builders<CourseOpeningRequest>.Filter.Eq(x => x.Status, CourseOpeningStatuses.Pending) }));
+        Notifications.Indexes.CreateOne(new CreateIndexModel<Notification>(
+            Builders<Notification>.IndexKeys.Ascending(x => x.UserId).Descending(x => x.CreatedAt)));
         Permissions.Indexes.CreateOne(new CreateIndexModel<Permission>(
             Builders<Permission>.IndexKeys.Ascending(x => x.Code),
             new CreateIndexOptions { Unique = true }));

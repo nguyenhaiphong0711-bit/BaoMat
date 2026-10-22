@@ -263,3 +263,33 @@ export interface LearningReport {
   supportStatuses: { key: string; label: string; value: number }[];
   recentEvents: { type: string; summary: string; occurredAt: string }[];
 }
+export interface CourseOpening {
+  id: string;
+  teacherName: string;
+  subjectName: string;
+  termName: string;
+  name: string;
+  description: string;
+  enrollmentCapacity: number;
+  status: "Pending" | "Processing" | "Approved" | "Rejected";
+  decisionComment: string;
+  createdClassId: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+export interface CourseOpeningOptions {
+  subjects: Pick<Subject, "id" | "code" | "name">[];
+  terms: { id: string; code: string; name: string }[];
+}
+export interface NotificationPage {
+  unread: number;
+  items: {
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    link: string;
+    createdAt: string;
+    readAt: string | null;
+  }[];
+}
