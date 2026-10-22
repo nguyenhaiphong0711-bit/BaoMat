@@ -28,6 +28,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("password-reset", context => RateLimitPartition.GetFixedWindowLimiter(
         $"{context.Connection.RemoteIpAddress}:{context.Request.Path}", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = 10, Window = TimeSpan.FromHours(1), QueueLimit = 0, AutoReplenishment = true }));
+    options.AddPolicy("ai", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"{context.Connection.RemoteIpAddress}:{context.Request.Path}", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
 });
 builder.Services.AddSingleton<MongoContext>();
 builder.Services.AddScoped<AuthService>();

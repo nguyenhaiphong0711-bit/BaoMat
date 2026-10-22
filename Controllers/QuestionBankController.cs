@@ -5,6 +5,7 @@ using LMS.Security;
 using LMS.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LMS.Controllers;
 
@@ -47,7 +48,8 @@ public sealed class QuestionBankController(QuestionBankService questions, UserSe
         catch (ArgumentException error) { return Problem(statusCode: 400, title: error.Message); }
     }
 
-    [HttpPost("ai-draft"), Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.QuestionsManage), ValidateAntiForgeryToken]
+    [HttpPost("ai-draft"), Authorize(Roles = Roles.Admin + "," + Roles.Teacher), RequirePermission(PermissionCodes.QuestionsManage),
+     ValidateAntiForgeryToken, EnableRateLimiting("ai")]
     public async Task<IActionResult> AiDraft(AiQuestionDraftRequest request, CancellationToken cancellationToken)
     {
         var user = await CurrentAsync(); if (user is null) return Unauthorized();

@@ -24,7 +24,7 @@ Kế hoạch thực hiện ban đầu gồm năm giai đoạn:
 | Xác thực | Cookie Authentication, BCrypt.Net | HttpOnly cookie, lockout, hash có salt, lịch sử mật khẩu |
 | Email | MailKit + Gmail SMTP TLS | Gửi OTP quên mật khẩu |
 | Thanh toán | VNPAY HMAC-SHA512 | Tạo payment URL và xác minh callback/IPN |
-| AI tùy chọn | HTTP API cấu hình bằng environment | Gợi ý câu hỏi ở trạng thái Draft; không tự duyệt |
+| AI tùy chọn | OpenAI Responses API, Structured Outputs | ChatGPT tạo câu hỏi ở trạng thái Draft; không tự duyệt |
 | Kiểm thử | Python integration, Postman/Newman, Playwright | Test server/database/SMTP thật cục bộ và luồng React |
 | Đóng gói | Docker, Vite build tích hợp MSBuild | Production chỉ cần ASP.NET runtime; không cần Node.js |
 
