@@ -9,6 +9,9 @@ public class User
     public string FullName { get; set; } = "";
     public string Email { get; set; } = "";
     public string PasswordHash { get; set; } = "";
+    // The current password is stored separately. These hashes only prevent reuse
+    // and never contain plaintext passwords.
+    public List<string> PasswordHistoryHashes { get; set; } = new();
     public string Role { get; set; } = Roles.Student;
     public List<ObjectId> TeachingSubjectIds { get; set; } = new();
     public ObjectId? DepartmentId { get; set; }

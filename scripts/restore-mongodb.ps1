@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Archive,
-    [switch]$ConfirmRestore
+    [string]$TargetDatabase,
+    [switch]$ConfirmRestore,
+    [switch]$AllowConfiguredDatabase
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +28,13 @@ $uri = [Environment]::GetEnvironmentVariable("MongoDb__ConnectionString")
 $database = [Environment]::GetEnvironmentVariable("MongoDb__DatabaseName")
 if (-not $uri -or -not $database) { throw "Thiếu MongoDb__ConnectionString hoặc MongoDb__DatabaseName trong môi trường/.env." }
 if (-not (Get-Command mongorestore -ErrorAction SilentlyContinue)) { throw "Chưa cài MongoDB Database Tools (mongorestore)." }
+$target = if ($TargetDatabase) { $TargetDatabase } else { "$database-RestoreTest" }
+if ($target -notmatch '^[A-Za-z0-9_-]+$') { throw "Tên database đích không hợp lệ." }
+if ($target -eq $database -and -not $AllowConfiguredDatabase) {
+    throw "Mặc định không restore đè database đang cấu hình. Thêm -AllowConfiguredDatabase nếu đã dừng ứng dụng và thực sự muốn làm việc này."
+}
 
-& mongorestore "--uri=$uri" "--archive=$Archive" --gzip --drop "--nsInclude=$database.*"
+& mongorestore "--uri=$uri" "--archive=$Archive" --gzip --drop `
+    "--nsInclude=$database.*" "--nsFrom=$database.*" "--nsTo=$target.*"
 if ($LASTEXITCODE -ne 0) { throw "mongorestore thất bại với mã $LASTEXITCODE." }
-Write-Host "Đã restore database $database từ $Archive"
+Write-Host "Đã restore database thử nghiệm $target từ $Archive"

@@ -119,6 +119,62 @@ export function Login() {
     </AuthShell>
   );
 }
+
+export function AccountSecurity() {
+  const navigate = useNavigate();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+    if (newPassword !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await api<{ message: string }>("/api/frontend/change-password", {
+        method: "POST",
+        body: { currentPassword, newPassword, confirmPassword },
+      });
+      window.dispatchEvent(new Event("session-expired"));
+      navigate("/login", { replace: true });
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="panel form-panel">
+      <span className="eyebrow">BẢO MẬT TÀI KHOẢN</span>
+      <h1>Đổi mật khẩu</h1>
+      <p className="muted">
+        Mật khẩu mới phải có chữ hoa, chữ thường, số, ký tự đặc biệt và không
+        trùng với 5 mật khẩu gần nhất.
+      </p>
+      <Alert message={error} />
+      <form onSubmit={submit}>
+        <label htmlFor="current-password">Mật khẩu hiện tại</label>
+        <input id="current-password" type="password" autoComplete="current-password"
+          maxLength={128} value={currentPassword}
+          onChange={(event) => setCurrentPassword(event.target.value)} required />
+        <label htmlFor="account-new-password">Mật khẩu mới</label>
+        <input id="account-new-password" type="password" autoComplete="new-password"
+          minLength={8} maxLength={128} value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)} required />
+        <label htmlFor="account-confirm-password">Xác nhận mật khẩu mới</label>
+        <input id="account-confirm-password" type="password" autoComplete="new-password"
+          minLength={8} maxLength={128} value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)} required />
+        <button disabled={busy}>{busy ? "Đang đổi…" : "Đổi mật khẩu"}</button>
+      </form>
+    </section>
+  );
+}
 export function PasswordRecovery() {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");

@@ -26,6 +26,8 @@ public class ResetPasswordViewModel
     public string Code { get; set; } = "";
 
     [Required, MinLength(8), StringLength(128), DataType(DataType.Password)]
+    [RegularExpression("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$",
+        ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]
     public string NewPassword { get; set; } = "";
 
     [Required, DataType(DataType.Password), Compare(nameof(NewPassword), ErrorMessage = "Mật khẩu xác nhận không khớp.")]
@@ -36,7 +38,10 @@ public class CreateUserViewModel
 {
     [Required, StringLength(120, MinimumLength = 2)] public string FullName { get; set; } = "";
     [Required, EmailAddress, StringLength(254)] public string Email { get; set; } = "";
-    [Required, MinLength(8), StringLength(128), DataType(DataType.Password)] public string Password { get; set; } = "";
+    [Required, MinLength(8), StringLength(128), DataType(DataType.Password)]
+    [RegularExpression("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$",
+        ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]
+    public string Password { get; set; } = "";
     [Required, RegularExpression("^(Admin|Teacher|Student|Staff)$")] public string Role { get; set; } = Roles.Student;
 }
 

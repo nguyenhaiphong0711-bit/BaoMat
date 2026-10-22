@@ -8,7 +8,7 @@ Bài tập nhỏ môn học, tập trung vào MVC, REST API và security. UI adm
 - MongoDB.Driver
 - Cookie Authentication
 - BCrypt password hashing
-- Razor Views
+- React 19 + TypeScript 7 (Razor cũ chỉ còn lớp tương thích cho URL/test di trú)
 
 Danh mục học vụ được lưu trong MongoDB database `LMS_Secure`: `Departments` chứa khoa, `Subjects` chứa môn, `AcademicPrograms` chứa ngành học, `ProgramCourses` liên kết môn với ngành và học kỳ chương trình, `AcademicTerms` chứa học kỳ, và `Classes` chứa lớp. Trong giao diện quản trị, mục **Ngành học** cho phép tạo/sửa ngành, thêm môn của khoa tương ứng vào đề cương, chọn học kỳ/tín chỉ và lưu trữ/mở lại ngành. Ngành đang được gán cho sinh viên không thể lưu trữ cho đến khi chuyển các hồ sơ đó sang ngành khác. Các entity MongoDB được tách thành file riêng trong `Models/`; `SeedData` tạo dữ liệu mặc định và gắn các bản ghi cũ còn thiếu liên kết mà không xóa dữ liệu.
 
@@ -161,7 +161,7 @@ API dùng cookie authentication giống MVC, không phát hành bearer/JWT token
 ## Đánh giá authentication/authorization
 - Đã có: BCrypt password hashing; lockout theo tài khoản sau số lần sai cấu hình; giới hạn endpoint đăng nhập/khôi phục theo IP; ghi log login; cookie `HttpOnly`, `SameSite=Lax`, hết hạn 8 giờ và sliding expiration; role authorization; kiểm tra membership/teacher ownership ở server; antiforgery cho form MVC; HSTS và cookie production chỉ gửi qua HTTPS; header chống nhúng trang, sniff MIME và vô hiệu camera/microphone/geolocation.
 - Đã bổ sung: API login/me/logout; API trả status JSON `401`/`403`; mỗi request xác thực lại trạng thái active và role hiện tại để vô hiệu cookie cũ sau khi khóa tài khoản/đổi role; logout MVC chuyển sang POST có antiforgery (không còn logout bằng GET).
-- Chưa đầy đủ cho production: mật khẩu mới bắt buộc tối thiểu 8 ký tự nhưng chưa có MFA, xác minh email hoặc giới hạn tốc độ theo IP; đã có đặt lại mật khẩu qua OTP email; lockout được cập nhật nguyên tử theo tài khoản để xử lý login đồng thời, nhưng chưa có giới hạn theo IP trên nhiều tài khoản. Thông báo lỗi đăng nhập đã dùng nội dung chung để hạn chế dò tài khoản. Hiện phù hợp demo/bài tập hơn là yêu cầu production có rủi ro cao.
+- Mật khẩu mới tối thiểu 8 ký tự, bắt buộc chữ hoa, chữ thường, số và ký tự đặc biệt. Người dùng có thể đổi mật khẩu sau khi nhập mật khẩu hiện tại; hệ thống giữ 5 BCrypt hash gần nhất để chống dùng lại và hủy phiên cũ. Chưa có MFA hoặc xác minh email. Login và OTP đã giới hạn tốc độ theo IP; lockout được cập nhật nguyên tử theo tài khoản. Thông báo lỗi đăng nhập dùng nội dung chung để hạn chế dò tài khoản.
 - Quyền chức năng được lưu trong `Permissions` và `Users.PermissionCodes`; Admin có thể gán quyền hệ thống cho từng giáo viên/sinh viên, thêm/xóa mã quyền tùy chỉnh và ánh xạ một quyền tùy chỉnh vào một cặp MVC `Controller/Action`. Việc ẩn menu/nút chỉ là UX; policy/filter server-side vẫn chặn truy cập URL trực tiếp. Admin được bypass quyền chức năng, còn role vẫn xác định loại tài khoản và giới hạn các hành động miền (ví dụ nộp bài chỉ dành cho Student).
 - Seed chạy migration bổ sung cho hồ sơ cũ chưa được khởi tạo: gán khoa/chương trình mặc định và liên kết lớp cũ với học kỳ phù hợp. Nếu đã có học kỳ nhưng không có học kỳ active, seed không tự kích hoạt lại học kỳ đã đóng; Admin cần chọn học kỳ đang mở.
 - Ghi danh cập nhật `Classes.StudentIds` và `StudentRegistrations` bằng các thao tác MongoDB riêng, không phải transaction đa document; khi chạy MongoDB replica set có thể cân nhắc transaction nếu cần bảo đảm nguyên tử tuyệt đối.

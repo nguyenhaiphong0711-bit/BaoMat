@@ -11,7 +11,7 @@ import {
 import { can, useAuth } from "./auth";
 import { errorMessage } from "./api";
 import { Alert, Loading } from "./ui";
-import { Login, PasswordRecovery } from "./AuthPages";
+import { AccountSecurity, Login, PasswordRecovery } from "./AuthPages";
 import { Dashboard, Classes, ClassDetail, Subjects } from "./Pages";
 
 import {
@@ -110,6 +110,7 @@ function Workspace() {
             <NavLink to="/reports">Báo cáo học tập</NavLink>
           )}
           <NavLink to="/notifications">Thông báo</NavLink>
+          <NavLink to="/account/security">Đổi mật khẩu</NavLink>
           {(user.role === "Teacher" || user.role === "Admin") && (
             <NavLink to="/course-openings">Đề xuất mở lớp</NavLink>
           )}
@@ -207,6 +208,7 @@ export function App() {
         <Route path="support/:ticketId" element={<SupportDetail />} />
         <Route path="reports" element={<LearningReports />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="account/security" element={<AccountSecurity />} />
         <Route path="course-openings" element={<CourseOpenings />} />
         <Route path="schedule" element={<SchedulePage />} />
         <Route path="registrations" element={<StudentRegistrations />} />

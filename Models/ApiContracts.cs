@@ -12,6 +12,21 @@ public sealed record ApiLoginRequest
     public required string Password { get; init; }
 }
 
+/// <summary>Changes the password of the authenticated account.</summary>
+public sealed record ApiChangePasswordRequest
+{
+    [Required, StringLength(128)]
+    public required string CurrentPassword { get; init; }
+
+    [Required, StringLength(128, MinimumLength = 8)]
+    [RegularExpression("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$",
+        ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]
+    public required string NewPassword { get; init; }
+
+    [Required, Compare(nameof(NewPassword), ErrorMessage = "Mật khẩu xác nhận không khớp.")]
+    public required string ConfirmPassword { get; init; }
+}
+
 /// <summary>Identity and role information for the current session.</summary>
 public sealed record ApiIdentityResponse(string Id, string FullName, string Email, string Role, IReadOnlyList<string> PermissionCodes);
 
@@ -28,6 +43,8 @@ public sealed record ApiCreateUserRequest
     public required string Email { get; init; }
 
     [Required, StringLength(128, MinimumLength = 8)]
+    [RegularExpression("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).+$",
+        ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]
     public required string Password { get; init; }
 
     [Required, RegularExpression("^(Admin|Teacher|Student|Staff)$")]

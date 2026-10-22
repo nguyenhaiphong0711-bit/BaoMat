@@ -15,7 +15,7 @@ namespace LMS.Controllers;
 [ApiController, Route("api/frontend"), Authorize]
 public sealed class FrontendController(
     IAntiforgery antiforgery, AuthService auth, PasswordResetService passwordReset,
-    UserService users, ClassService classes, SubjectService subjects) : ControllerBase
+    UserService users, ClassService classes, SubjectService subjects, ActivityLogService activityLogs) : ControllerBase
 {
     [HttpGet("csrf"), AllowAnonymous]
     public IActionResult Csrf()
@@ -66,6 +66,31 @@ public sealed class FrontendController(
         if (!await passwordReset.ResetPasswordAsync(request.Email, request.Code, request.NewPassword, cancellationToken))
             return Problem(statusCode: 400, title: "Mã OTP không hợp lệ, đã hết hạn hoặc đã được sử dụng.");
         return Ok(new { message = "Đặt lại mật khẩu thành công. Hãy đăng nhập bằng mật khẩu mới." });
+    }
+
+    [HttpPost("change-password"), ValidateAntiForgeryToken]
+    public async Task<IActionResult> ChangePassword(ApiChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+        var email = User.FindFirstValue(ClaimTypes.Email) ?? "";
+        var result = await users.ChangePasswordAsync(id, request.CurrentPassword, request.NewPassword, cancellationToken);
+        await activityLogs.LogAsync(HttpContext,
+            MongoDB.Bson.ObjectId.TryParse(id, out var userId) ? userId : null,
+            email, "PASSWORD_CHANGE", result == PasswordChangeResult.Success, result.ToString());
+        return result switch
+        {
+            PasswordChangeResult.Success => await SignOutAfterPasswordChange(),
+            PasswordChangeResult.CurrentPasswordIncorrect => Problem(statusCode: 400, title: "Mật khẩu hiện tại không đúng."),
+            PasswordChangeResult.PasswordReused => Problem(statusCode: 400, title: "Mật khẩu mới không được trùng với 5 mật khẩu gần nhất."),
+            PasswordChangeResult.AccountChanged => Problem(statusCode: 409, title: "Tài khoản vừa thay đổi. Vui lòng thử lại."),
+            _ => Unauthorized()
+        };
+    }
+
+    private async Task<IActionResult> SignOutAfterPasswordChange()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Ok(new { message = "Đổi mật khẩu thành công. Hãy đăng nhập lại." });
     }
 
     [HttpGet("classes/{id}"), RequirePermission(PermissionCodes.ClassesView)]

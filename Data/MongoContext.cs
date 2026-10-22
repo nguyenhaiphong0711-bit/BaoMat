@@ -67,6 +67,10 @@ public class MongoContext
         Users.Indexes.CreateOne(new CreateIndexModel<User>(
             Builders<User>.IndexKeys.Ascending(x => x.Email),
             new CreateIndexOptions { Unique = true }));
+        ActivityLogs.Indexes.CreateOne(new CreateIndexModel<ActivityLog>(
+            Builders<ActivityLog>.IndexKeys.Descending(x => x.CreatedAt)));
+        ActivityLogs.Indexes.CreateOne(new CreateIndexModel<ActivityLog>(
+            Builders<ActivityLog>.IndexKeys.Ascending(x => x.UserId).Descending(x => x.CreatedAt)));
         Departments.Indexes.CreateOne(new CreateIndexModel<Department>(
             Builders<Department>.IndexKeys.Ascending(x => x.Code),
             new CreateIndexOptions { Unique = true }));

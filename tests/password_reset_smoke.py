@@ -288,13 +288,14 @@ def main(extra_checks=None):
                     api(student_client, '/api/schedule/sessions/'+session['id']+'/enrollment', {}, 'POST', 204)
                     assert api(student_client, '/api/schedule/sessions/'+session['id'])['isEnrolled']
                     passed('schedule creation and student enrollment')
+                    postman_admin_password = 'Integration@123'
                     if extra_checks is not None:
-                        extra_checks(locals())
+                        postman_admin_password = extra_checks(locals()) or postman_admin_password
                     if args.postman:
                         result_path = str(folder/'newman.json')
                         result = subprocess.run(['npm', 'exec', '--yes', '--package=newman@6.2.3', '--',
                             'newman', 'run', str(repo/'postman/LMS.postman_collection.json'),
-                            '--env-var', 'baseUrl='+web.base, '--env-var', 'adminPassword=Integration@123',
+                            '--env-var', 'baseUrl='+web.base, '--env-var', 'adminPassword='+postman_admin_password,
                             '--reporters', 'json', '--reporter-json-export', result_path],
                             capture_output=True, text=True)
                         report = json.loads(Path(result_path).read_text())['run']

@@ -138,6 +138,34 @@ public class UserService
         return user;
     }
 
+    public async Task<PasswordChangeResult> ChangePasswordAsync(
+        string userId, string currentPassword, string newPassword, CancellationToken cancellationToken = default)
+    {
+        if (!ObjectId.TryParse(userId, out var id)) return PasswordChangeResult.AccountUnavailable;
+        var user = await _db.Users.Find(x => x.Id == id && x.IsActive).FirstOrDefaultAsync(cancellationToken);
+        if (user is null) return PasswordChangeResult.AccountUnavailable;
+        if (!BCrypt.Net.BCrypt.Verify(currentPassword, user.PasswordHash))
+            return PasswordChangeResult.CurrentPasswordIncorrect;
+        if (PasswordWasUsed(user, newPassword)) return PasswordChangeResult.PasswordReused;
+
+        var history = new[] { user.PasswordHash }.Concat(user.PasswordHistoryHashes ?? new()).Take(5).ToList();
+        var now = DateTime.UtcNow;
+        var update = Builders<User>.Update
+            .Set(x => x.PasswordHash, BCrypt.Net.BCrypt.HashPassword(newPassword))
+            .Set(x => x.PasswordHistoryHashes, history)
+            .Set(x => x.PasswordChangedAt, now)
+            .Set(x => x.FailedLoginAttempts, 0)
+            .Set(x => x.LockoutUntil, (DateTime?)null);
+        var changed = await _db.Users.UpdateOneAsync(
+            x => x.Id == id && x.IsActive && x.PasswordHash == user.PasswordHash,
+            update, cancellationToken: cancellationToken);
+        return changed.ModifiedCount == 1 ? PasswordChangeResult.Success : PasswordChangeResult.AccountChanged;
+    }
+
+    public static bool PasswordWasUsed(User user, string candidate) =>
+        BCrypt.Net.BCrypt.Verify(candidate, user.PasswordHash) ||
+        (user.PasswordHistoryHashes ?? new()).Any(hash => BCrypt.Net.BCrypt.Verify(candidate, hash));
+
     public async Task ToggleAsync(string id)
     {
         if (!ObjectId.TryParse(id, out var userId)) return;
@@ -268,6 +296,15 @@ public class UserService
 
         return false;
     }
+}
+
+public enum PasswordChangeResult
+{
+    Success,
+    CurrentPasswordIncorrect,
+    PasswordReused,
+    AccountUnavailable,
+    AccountChanged
 }
 
 public class SubjectService

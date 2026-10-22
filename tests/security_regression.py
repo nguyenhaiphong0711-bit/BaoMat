@@ -15,6 +15,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 
 from password_reset_smoke import Web, main
 
@@ -55,6 +56,25 @@ def security_checks(state):
     assert web.request('/Permission/Assign', {'Assignment.UserId':s2['id']})[0] == 400
     api(web, '/api/users', {'fullName':'Duplicate','email':s2['email'],
         'password':'Regression@123','role':'Admin'}, expected=409)
+    password_user = api(web, '/api/users', {'fullName':'Password history user','email':'password@example.test',
+        'password':'First@123','role':'Student'}, expected=201)
+    password_client = login(password_user['email'], 'First@123')
+    api(password_client, '/api/frontend/change-password', {'currentPassword':'Wrong@123',
+        'newPassword':'Second@123','confirmPassword':'Second@123'}, expected=400)
+    api(password_client, '/api/frontend/change-password', {'currentPassword':'First@123',
+        'newPassword':'Second@123','confirmPassword':'Second@123'})
+    api(password_client, '/api/auth/me', expected=401)
+    password_client = login(password_user['email'], 'Second@123')
+    api(password_client, '/api/frontend/change-password', {'currentPassword':'Second@123',
+        'newPassword':'First@123','confirmPassword':'First@123'}, expected=400)
+    history_count = mongo('print(d.Users.findOne({_id:ObjectId("'+password_user['id']+'")} ).PasswordHistoryHashes.length)')
+    assert history_count == '1'
+    audit_count = mongo('print(d.ActivityLogs.countDocuments({UserId:ObjectId("'+password_user['id']+'"),Action:"PASSWORD_CHANGE"}))')
+    assert audit_count == '3'
+    passed('authenticated password change verifies current password, records audit and prevents reuse')
+
+    api(Web(web.base), '/api/auth/login', {'email':'{"$ne":null}','password':'anything'}, expected=400)
+    passed('structured NoSQL injection payload is rejected as an invalid scalar email')
     passed('MVC writes require anti-forgery tokens; duplicate account email is rejected')
 
     for client in (other_teacher, other_student):
@@ -83,6 +103,18 @@ def security_checks(state):
     with owner.opener.open(request, timeout=30) as response:
         file_id = response.read().decode()
         assert response.status == 200 and re.fullmatch('[a-f0-9]{24}',file_id)
+    fake_boundary = 'LmsFakePdfBoundary'
+    fake_pdf = (f'--{fake_boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n{token}\r\n'
+        f'--{fake_boundary}\r\nContent-Disposition: form-data; name="file"; filename="malware.pdf"\r\n'
+        f'Content-Type: application/pdf\r\n\r\nMZ executable content\r\n--{fake_boundary}--\r\n').encode()
+    fake_request = urllib.request.Request(web.base+'/Upload/SubmissionFile?assignmentId='+aid, fake_pdf,
+        {'Content-Type':'multipart/form-data; boundary='+fake_boundary})
+    try:
+        owner.opener.open(fake_request, timeout=30)
+        raise AssertionError('Renamed executable was accepted as PDF')
+    except urllib.error.HTTPError as error:
+        assert error.status == 400
+    passed('upload signature validation rejects content renamed to an allowed extension')
     with post_form(owner, '/Submission/Submit?assignmentId='+aid,
         {'Content':'Answer with file','UploadedFileIds':file_id}, '/Submission/Submit?assignmentId='+aid) as response:
         assert response.status == 200
@@ -154,14 +186,15 @@ def security_checks(state):
     # Resetting the password cannot delete the independent rate-limit history.
     smtp = state['smtp']
     smtp.reject = False
-    for attempt in range(4):  # The baseline already delivered one successful Admin OTP.
+    reset_passwords = ['HistoryOne@123', 'HistoryTwo@123', 'HistoryThree@123', 'HistoryFour@123']
+    for next_password in reset_passwords:  # The baseline already delivered one successful Admin OTP.
         mongo('d.PasswordResetRequestLimits.updateMany({},{$set:{LastRequestedAt:new Date(Date.now()-61000)}})')
         client = Web(web.base)
         assert client.form('/Auth/ForgotPassword',{'Email':'admin@lms.com'})[0] == 200
         msg = email.message_from_bytes(smtp.messages.get(timeout=5),policy=email.policy.default)
         code = re.search(r'\b\d{6}\b',msg.get_body(preferencelist=('plain',)).get_content())[0]
         assert client.form('/Auth/ResetPassword',{'Email':'admin@lms.com','Code':code,
-            'NewPassword':'Integration@123','ConfirmPassword':'Integration@123'})[0] == 200
+            'NewPassword':next_password,'ConfirmPassword':next_password})[0] == 200
     mongo('d.PasswordResetRequestLimits.updateMany({},{$set:{LastRequestedAt:new Date(Date.now()-61000)}})')
     assert Web(web.base).form('/Auth/ForgotPassword',{'Email':'admin@lms.com'})[0] == 200
     assert smtp.messages.empty(), 'Sixth email exceeded the hourly quota'
@@ -215,6 +248,8 @@ def security_checks(state):
         finally:
             app.terminate();app.wait(timeout=10)
             mongo('db.getSiblingDB("'+bootstrap_db+'").dropDatabase()')
+
+    return 'HistoryFour@123'
 
 
 if __name__ == '__main__':

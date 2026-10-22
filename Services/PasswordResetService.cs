@@ -115,6 +115,11 @@ public sealed class PasswordResetService(
         if (token is null || token.DeliveryPending || token.ExpiresAt <= now || token.FailedAttempts >= MaximumFailedAttempts)
             return false;
 
+        // A reset is not allowed to restore the current password or one of the
+        // five most recently replaced passwords.
+        if (UserService.PasswordWasUsed(user, newPassword))
+            return false;
+
         if (!BCrypt.Net.BCrypt.Verify(code, token.CodeHash))
         {
             await db.PasswordResetTokens.UpdateOneAsync(
@@ -130,10 +135,12 @@ public sealed class PasswordResetService(
         if (consumed is null)
             return false;
 
+        var history = new[] { user.PasswordHash }.Concat(user.PasswordHistoryHashes ?? new()).Take(5).ToList();
         var updated = await db.Users.UpdateOneAsync(
-            x => x.Id == user.Id && x.IsActive,
+            x => x.Id == user.Id && x.IsActive && x.PasswordHash == user.PasswordHash,
             Builders<User>.Update
                 .Set(x => x.PasswordHash, BCrypt.Net.BCrypt.HashPassword(newPassword))
+                .Set(x => x.PasswordHistoryHashes, history)
                 .Set(x => x.PasswordChangedAt, now)
                 .Set(x => x.FailedLoginAttempts, 0)
                 .Set(x => x.LockoutUntil, (DateTime?)null),
