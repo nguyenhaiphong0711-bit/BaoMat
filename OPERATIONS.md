@@ -57,3 +57,11 @@ python3 scripts/populate-production-quizzes.py --apply --count 3
 ```
 
 Sau khi chạy, đăng nhập Teacher/Admin để kiểm tra danh sách quiz và đăng nhập Student thuộc lớp để xác nhận chỉ quiz đã công bố mới xuất hiện. Không bật `DemoData__Enabled` trên Production chỉ để bổ sung một vài quiz.
+
+Nếu cần ghi thẳng Atlas, dùng migration mongosh một lần thay cho API:
+
+```powershell
+mongosh $env:MongoDb__ConnectionString scripts/fill-atlas-quizzes.mongodb.js
+```
+
+`fill-atlas-quizzes.mongodb.js` không được gọi khi ứng dụng khởi động và không thuộc `DemoDataSeeder`. Script từ chối chạy trên database hệ thống, chỉ chọn tối đa 5 lớp đang hoạt động chưa có quiz, tái sử dụng giáo viên/môn hiện có, tạo ba câu hỏi Published có thông tin reviewer, tạo quiz Published và ghi `LearningEvent`. Chạy lại không tạo thêm quiz cho lớp đã có quiz.
