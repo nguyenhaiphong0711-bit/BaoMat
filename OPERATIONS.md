@@ -32,3 +32,28 @@ python3 tests/reports_integration.py --dotnet "$(command -v dotnet)" --dll path/
 ```
 
 Đây là smoke test để phát hiện lỗi kết nối, phân quyền và lỗi 5xx dưới tải nhỏ. Trước khi phục vụ thật, cần chạy load test riêng với số người dùng, dữ liệu, vùng mạng và Atlas tier dự kiến.
+
+## Bổ sung quiz minh họa trên production
+
+Khi production đã có lớp và môn học nhưng trang quiz còn trống, dùng script PowerShell để tạo dữ liệu qua API nghiệp vụ. Script không kết nối trực tiếp MongoDB, không ghi đè quiz hiện có và chỉ chọn lớp chưa có quiz:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\populate-production-quizzes.ps1 -Apply
+```
+
+Script yêu cầu mật khẩu Admin tại thời điểm chạy, không lưu mật khẩu vào file. Với mỗi lớp được chọn, script tạo câu hỏi, gửi qua một tài khoản reviewer tạm, phê duyệt, công bố, tạo quiz và công bố quiz. Tài khoản reviewer tạm bị khóa trong khối `finally` kể cả khi một bước sau đó lỗi.
+
+Mặc định tạo tối đa 3 quiz. Có thể đặt từ 1 đến 5:
+
+```powershell
+.\scripts\populate-production-quizzes.ps1 -Apply -Count 5
+```
+
+Bản Python có cùng mục đích dành cho Linux/macOS:
+
+```bash
+python3 scripts/populate-production-quizzes.py --apply --count 3
+```
+
+Sau khi chạy, đăng nhập Teacher/Admin để kiểm tra danh sách quiz và đăng nhập Student thuộc lớp để xác nhận chỉ quiz đã công bố mới xuất hiện. Không bật `DemoData__Enabled` trên Production chỉ để bổ sung một vài quiz.

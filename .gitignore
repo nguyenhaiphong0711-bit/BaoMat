@@ -17,3 +17,4 @@ ClientApp/node_modules/
 ClientApp/dist/
 ClientApp/playwright-report/
 ClientApp/test-results/
+presentation_assets/
