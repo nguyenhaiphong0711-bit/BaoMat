@@ -6,6 +6,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 if (-not $Apply) {
     throw "Chưa thay đổi production. Chạy lại với -Apply sau khi kiểm tra đúng BaseUrl."
 }
