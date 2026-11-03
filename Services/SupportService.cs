@@ -1,6 +1,7 @@
 using LMS.Data;
 using LMS.Models;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 
 namespace LMS.Services;
@@ -51,16 +52,38 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
 
     public async Task<object> ListAsync(User user, string? query, string? status, int page)
     {
-        FilterDefinition<SupportTicket> filter;
-        if (user.Role == Roles.Admin) filter = Builders<SupportTicket>.Filter.Empty;
-        else if (user.Role == Roles.Student) filter = Builders<SupportTicket>.Filter.Eq(x => x.StudentId, user.Id);
-        else if (user.Role == Roles.Staff && user.DepartmentId.HasValue &&
-                 await db.Departments.Find(x => x.Id == user.DepartmentId && !x.IsArchived).AnyAsync())
-            filter = Builders<SupportTicket>.Filter.Eq(x => x.DepartmentId, user.DepartmentId.Value);
-        else filter = Builders<SupportTicket>.Filter.Where(_ => false);
+        // Read documents individually so one legacy/manual Atlas document with a
+        // wrong BSON type cannot make the complete Admin support queue return 500.
+        // Invalid scope identifiers are deliberately skipped instead of exposed.
+        BsonDocument rawFilter;
+        if (user.Role == Roles.Admin) rawFilter = new();
+        else if (user.Role == Roles.Student)
+            rawFilter = new("$or", new BsonArray {
+                new BsonDocument("StudentId", user.Id), new BsonDocument("StudentId", user.Id.ToString()) });
+        else if (user.Role == Roles.Staff && user.DepartmentId.HasValue)
+            rawFilter = new("$or", new BsonArray {
+                new BsonDocument("DepartmentId", user.DepartmentId.Value),
+                new BsonDocument("DepartmentId", user.DepartmentId.Value.ToString()) });
+        else rawFilter = new("_id", new BsonDocument("$exists", false));
+        var documents = await db.RawSupportTickets.Find(rawFilter)
+            .Sort(new BsonDocument("UpdatedAt", -1)).ToListAsync();
         var visible = new List<SupportTicketResponse>();
-        foreach (var ticket in await db.SupportTickets.Find(filter).SortByDescending(x => x.UpdatedAt).ToListAsync())
+        foreach (var document in documents)
         {
+            SupportTicket ticket;
+            try
+            {
+                NormalizeObjectId(document, "StudentId");
+                NormalizeObjectId(document, "DepartmentId");
+                NormalizeObjectId(document, "AssignedStaffId");
+                NormalizeNestedObjectIds(document, "Messages", "SenderId");
+                NormalizeNestedObjectIds(document, "History", "ActorId");
+                ticket = BsonSerializer.Deserialize<SupportTicket>(document);
+            }
+            catch (FormatException) { continue; }
+            catch (MongoDB.Bson.Serialization.BsonSerializationException) { continue; }
+            ticket.Messages ??= new();
+            ticket.History ??= new();
             var response = await ResponseAsync(user, ticket);
             if (response is null || (!string.IsNullOrWhiteSpace(query) &&
                 !(response.Subject + " " + response.StudentName).Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)) ||
@@ -69,6 +92,20 @@ public sealed class SupportService(MongoContext db, UserService users, LearningE
                 History = Array.Empty<SupportHistoryResponse>() });
         }
         return new { items = visible.Skip((page - 1) * 15).Take(15), total = visible.Count, page, pageSize = 15 };
+    }
+
+    private static void NormalizeObjectId(BsonDocument document, string field)
+    {
+        if (document.TryGetValue(field, out var value) && value.IsString &&
+            ObjectId.TryParse(value.AsString, out var parsed))
+            document[field] = parsed;
+    }
+
+    private static void NormalizeNestedObjectIds(BsonDocument document, string arrayField, string idField)
+    {
+        if (!document.TryGetValue(arrayField, out var value) || !value.IsBsonArray) return;
+        foreach (var item in value.AsBsonArray.Where(x => x.IsBsonDocument))
+            NormalizeObjectId(item.AsBsonDocument, idField);
     }
 
     public async Task<SupportTicket> CreateAsync(User student, SupportCreateRequest request)

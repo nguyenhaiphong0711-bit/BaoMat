@@ -1,5 +1,6 @@
 using LMS.Models;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
 
@@ -38,6 +39,7 @@ public class MongoContext
     public IMongoCollection<Quiz> Quizzes => _database.GetCollection<Quiz>("Quizzes");
     public IMongoCollection<QuizAttempt> QuizAttempts => _database.GetCollection<QuizAttempt>("QuizAttempts");
     public IMongoCollection<SupportTicket> SupportTickets => _database.GetCollection<SupportTicket>("SupportTickets");
+    public IMongoCollection<BsonDocument> RawSupportTickets => _database.GetCollection<BsonDocument>("SupportTickets");
     public IMongoCollection<LearningEvent> LearningEvents => _database.GetCollection<LearningEvent>("LearningEvents");
     public IMongoCollection<CourseOpeningRequest> CourseOpeningRequests => _database.GetCollection<CourseOpeningRequest>("CourseOpeningRequests");
     public IMongoCollection<Notification> Notifications => _database.GetCollection<Notification>("Notifications");
