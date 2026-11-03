@@ -13,7 +13,7 @@ test("role-scoped reports render student progress and department metrics without
   browser,
 }) => {
   test.skip(
-    !process.env.E2E_STAFF_EMAIL,
+    !process.env.E2E_REPORTS_READY,
     "Requires the isolated report fixture.",
   );
   const studentContext = await browser.newContext();

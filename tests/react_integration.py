@@ -14,10 +14,10 @@ from security_regression import security_checks
 
 
 def extra_checks(state):
-    security_checks(state)
+    admin_password = security_checks(state)
     repo, passed = state['repo'], state['passed']
     state['smtp'].reject = True
-    environment = dict(os.environ, E2E_BASE_URL=state['web'].base, E2E_ADMIN_PASSWORD='Integration@123',
+    environment = dict(os.environ, E2E_BASE_URL=state['web'].base, E2E_ADMIN_PASSWORD=admin_password,
         E2E_CLASS_ID=state['cid'], E2E_ASSIGNMENT_ID=state['aid'], E2E_SMTP_FAILURE='true')
     subprocess.run(['npm','run','test:e2e'],cwd=repo/'ClientApp',env=environment,check=True)
     passed('Chromium: React authentication, CRUD, shared Razor session, permissions, CSRF, class content, mobile and OTP errors')

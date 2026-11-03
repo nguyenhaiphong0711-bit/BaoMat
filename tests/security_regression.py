@@ -30,6 +30,18 @@ def security_checks(state):
         api(client, '/api/auth/login', {'email': address, 'password': password})
         return client
 
+    def frontend_mutation(client, path, data, expected=200):
+        token = api(client, '/api/frontend/csrf')['requestToken']
+        request = urllib.request.Request(web.base + path, json.dumps(data).encode(), {
+            'Content-Type': 'application/json', 'RequestVerificationToken': token,
+            'Origin': web.base
+        }, method='POST')
+        try: response = client.opener.open(request, timeout=30)
+        except urllib.error.HTTPError as error: response = error
+        body = response.read().decode()
+        assert response.status == expected, (path, response.status, expected, body[:500])
+        return json.loads(body) if body else None
+
     def csrf(client, page):
         status, body = client.request(page)
         assert status == 200, (page, status)
@@ -59,13 +71,13 @@ def security_checks(state):
     password_user = api(web, '/api/users', {'fullName':'Password history user','email':'password@example.test',
         'password':'First@123','role':'Student'}, expected=201)
     password_client = login(password_user['email'], 'First@123')
-    api(password_client, '/api/frontend/change-password', {'currentPassword':'Wrong@123',
+    frontend_mutation(password_client, '/api/frontend/change-password', {'currentPassword':'Wrong@123',
         'newPassword':'Second@123','confirmPassword':'Second@123'}, expected=400)
-    api(password_client, '/api/frontend/change-password', {'currentPassword':'First@123',
+    frontend_mutation(password_client, '/api/frontend/change-password', {'currentPassword':'First@123',
         'newPassword':'Second@123','confirmPassword':'Second@123'})
     api(password_client, '/api/auth/me', expected=401)
     password_client = login(password_user['email'], 'Second@123')
-    api(password_client, '/api/frontend/change-password', {'currentPassword':'Second@123',
+    frontend_mutation(password_client, '/api/frontend/change-password', {'currentPassword':'Second@123',
         'newPassword':'First@123','confirmPassword':'First@123'}, expected=400)
     history_count = mongo('print(d.Users.findOne({_id:ObjectId("'+password_user['id']+'")} ).PasswordHistoryHashes.length)')
     assert history_count == '1'

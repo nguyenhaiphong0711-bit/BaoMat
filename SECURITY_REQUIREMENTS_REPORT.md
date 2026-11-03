@@ -1,6 +1,6 @@
 # Báo cáo đáp ứng yêu cầu bảo mật
 
-Ngày đối chiếu: 22/10/2026. Báo cáo này đối chiếu 30 tiêu chí được giao với mã nguồn ASP.NET Core/React/MongoDB. Trạng thái **Đạt** chỉ dùng khi có cơ chế trong mã và ca kiểm thử; **Đạt tương đương** là cùng mục tiêu bảo mật nhưng dùng cơ chế MongoDB thay cho tên tính năng SQL Server; **Cần cấu hình/kiểm chứng** là phần nằm ở MongoDB Atlas hoặc môi trường triển khai.
+Ngày đối chiếu: 03/11/2026. Báo cáo này đối chiếu 30 tiêu chí được giao với mã nguồn ASP.NET Core/React/MongoDB. Trạng thái **Đạt** chỉ dùng khi có cơ chế trong mã và ca kiểm thử; **Đạt tương đương** là cùng mục tiêu bảo mật nhưng dùng cơ chế MongoDB thay cho tên tính năng SQL Server; **Cần cấu hình/kiểm chứng** là phần nằm ở MongoDB Atlas hoặc môi trường triển khai.
 
 ## Kết luận về SQL Server
 
@@ -35,11 +35,11 @@ Nếu tiêu chí chấm bắt buộc phải có câu lệnh `CREATE SECURITY POL
 | 21 | Đạt | API báo cáo theo phạm vi role; test xác nhận không có password, đáp án quiz, tin hỗ trợ hoặc nhận xét ngoài phạm vi trong JSON/export. |
 | 22 | Đạt | API trả 401 khi chưa đăng nhập, 403 khi thiếu quyền, validation trả 400 và kiểm tra ownership trên tài nguyên. Postman và integration test chạy bằng nhiều role. |
 | 23 | Đạt | Production dùng `/error`, Problem Details chung và `X-Request-Id`; test gây lỗi VNPAY xác nhận không lộ exception/secret. Chi tiết vẫn được ghi server log. |
-| 24 | Một phần | `/health/live`, `/health/ready`, script backup/restore và hướng dẫn sự cố đã có. Chưa có bằng chứng restore Atlas thật vì đây là thao tác môi trường. |
+| 24 | Đạt ở local; còn Atlas | `/health/live`, `/health/ready` và script backup/restore đã có. Ngày 03/11/2026, database thử được dump và restore đủ 3/3 document, 0 lỗi. Atlas Cloud Backup/PITR và restore snapshot thật vẫn cần kiểm chứng trong Atlas. |
 | 25 | Đạt | Secret scan, role/ownership review, production error test và các lỗi/cách sửa được ghi trong `PROJECT_REVIEW.md` cùng báo cáo này. |
 | 26 | Đạt ở phạm vi bài tập | Rate limit login/OTP, pagination, timeout Mongo/SMTP, health check và smoke 96 request đồng thời. Chưa phải benchmark production hoặc giám sát CPU/RAM dài hạn. |
 | 27 | Đạt phần lớn | Có unique/compound/sort indexes cho email, đăng ký, tiến độ, quiz, ticket, event, notification, học kỳ và log. Cần chạy `explain("executionStats")` trên dữ liệu production nếu muốn số đo trước/sau. |
-| 28 | Đạt cho frontend; backend cần chạy lại tại máy có SDK | `npm audit --omit=dev` ngày 22/10/2026: 0 lỗ hổng trên 77 dependency. NuGet đã nâng MongoDB.Driver 3.12.0 và Pkcs 10.0.13; cần lưu output `dotnet list package --vulnerable --include-transitive` khi nghiệm thu. |
+| 28 | Đạt | Ngày 03/11/2026, `npm audit --omit=dev` báo 0 lỗ hổng và `dotnet list package --vulnerable --include-transitive` báo không có package dễ bị tổn thương theo nguồn NuGet hiện tại. |
 | 29 | Đạt | SMTP bắt buộc TLS và kiểm tra certificate; cookie/antiforgery/header được siết; log không chứa OTP/password/URI; upload không tin MIME/tên client. Test certificate không tin cậy xác nhận bị từ chối. |
 | 30 | Đạt | Test file rỗng/sai ID/sai owner/quá phạm vi, nội dung giả PDF, file riêng tư và đường dẫn đoán. GridFS không cho chạy file như static asset và không ghi đè theo tên. Antivirus chuyên dụng là phần mở rộng production. |
 

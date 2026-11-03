@@ -25,7 +25,11 @@ test("teacher class-opening workflow and personal notifications render from scop
     await expect(teacher.getByRole("heading", { name: "Thông báo", exact: true })).toBeVisible();
     await expect(teacher.getByText(/Đề xuất mở lớp/).first()).toBeVisible();
 
-    await login(admin, "admin@lms.com", "Integration@123");
+    await login(
+      admin,
+      "admin@lms.com",
+      process.env.E2E_ADMIN_PASSWORD ?? "Integration@123",
+    );
     await admin.getByRole("link", { name: "Đề xuất mở lớp", exact: true }).click();
     await expect(admin.getByText("Lớp kinh tế số được duyệt", { exact: true })).toBeVisible();
     await expect(admin.getByRole("article").filter({ hasText: "Lớp kinh tế số được duyệt" })

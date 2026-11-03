@@ -249,7 +249,7 @@ def main(extra_checks=None):
                         passed(role + ' navigation and Admin API access denied')
                     def api(client, path, data=None, method=None, expected=200):
                         status, body = client.request(path, data, True, method)
-                        assert status == expected, (method, path, status)
+                        assert status == expected, (method, path, status, body[:500])
                         return json.loads(body) if body else None
                     users = api(web, '/api/users')
                     teacher_id = next(u['id'] for u in users if u['role'] == 'Teacher')

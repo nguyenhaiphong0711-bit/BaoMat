@@ -13,7 +13,7 @@ test("learner support React: student opens a ticket and scoped Staff resolves th
   browser,
 }) => {
   test.skip(
-    !process.env.E2E_STAFF_EMAIL,
+    !process.env.E2E_SUPPORT_TICKET_ID,
     "Requires the isolated Staff fixture.",
   );
   const studentContext = await browser.newContext();

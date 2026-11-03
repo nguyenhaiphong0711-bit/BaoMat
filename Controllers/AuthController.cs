@@ -1,4 +1,5 @@
 using LMS.Models;
+using LMS.Security;
 using LMS.Services;
 using LMS.ViewModels;
 using Microsoft.AspNetCore.Authentication;
@@ -31,7 +32,8 @@ public class AuthController : Controller
             new(ClaimTypes.NameIdentifier, result.User!.Id.ToString()),
             new(ClaimTypes.Name, result.User.FullName),
             new(ClaimTypes.Email, result.User.Email),
-            new(ClaimTypes.Role, result.User.Role)
+            new(ClaimTypes.Role, result.User.Role),
+            new(AuthClaims.PasswordVersion, AuthClaims.PasswordVersionFor(result.User))
         };
         claims.AddRange(result.User.PermissionCodes.Select(code => new Claim(PermissionCodes.ClaimType, code)));
         var authenticationProperties = new AuthenticationProperties

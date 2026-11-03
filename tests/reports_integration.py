@@ -56,6 +56,7 @@ def report_checks(state):
     api(staff, '/api/reports/learning', expected=403)
     mongo('d.Departments.updateOne({_id:ObjectId("'+state['general']['id']+'")},{$set:{IsArchived:false}})')
     passed('report permission revocation and archived department scope apply immediately to existing sessions')
+    state['browser_environment']['E2E_REPORTS_READY'] = 'true'
 
 
 def extra_checks(state):

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using LMS.Models;
+using LMS.Security;
 
 namespace LMS.Middleware;
 
@@ -44,11 +45,11 @@ public sealed class AppCookieAuthenticationEvents(UserService users, PermissionS
         var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
         var user = userId is null ? null : await users.GetAsync(userId);
         var roleClaim = context.Principal?.FindFirstValue(ClaimTypes.Role);
-        var ticketIssuedAt = context.Properties?.IssuedUtc?.UtcDateTime;
+        var passwordVersion = context.Principal?.FindFirstValue(AuthClaims.PasswordVersion);
 
         if (user is { IsActive: true } &&
             user.Role == roleClaim &&
-            (user.PasswordChangedAt is null || ticketIssuedAt >= user.PasswordChangedAt.Value))
+            passwordVersion == AuthClaims.PasswordVersionFor(user))
         {
             if (context.Principal?.Identity is not ClaimsIdentity identity)
                 return;

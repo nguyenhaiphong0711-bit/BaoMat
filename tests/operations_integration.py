@@ -98,10 +98,8 @@ def operation_checks(state):
 
     paths = ('/health/ready', '/api/classes', '/api/reports/learning')
     def worker(_):
-        client = Web(web.base)
         started = time.monotonic()
-        api(client, '/api/auth/login', {'email':'student@lms.com','password':'Student@123'})
-        statuses = [client.request(paths[index % len(paths)])[0] for index in range(12)]
+        statuses = [student.request(paths[index % len(paths)])[0] for index in range(12)]
         return statuses, time.monotonic() - started
 
     started = time.monotonic()

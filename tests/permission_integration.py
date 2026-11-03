@@ -13,10 +13,10 @@ from security_regression import security_checks
 
 
 def permission_checks(state, extra_checks=None):
-    security_checks(state)
+    admin_password = security_checks(state)
     mongo, api, web, passed = (state[key] for key in ('mongo', 'api', 'web', 'passed'))
     # The security suite resets the Admin password, invalidating its earlier cookie.
-    api(web, '/api/auth/login', {'email': 'admin@lms.com', 'password': 'Integration@123'})
+    api(web, '/api/auth/login', {'email': 'admin@lms.com', 'password': admin_password})
     student_id, teacher_id = state['student_id'], state['teacher_id']
     student = Web(web.base)
     api(student, '/api/auth/login', {'email': 'student@lms.com', 'password': 'Student@123'})
@@ -84,11 +84,12 @@ def permission_checks(state, extra_checks=None):
         extra_checks(state)
 
     state['smtp'].reject = True
-    environment = dict(os.environ, E2E_BASE_URL=web.base, E2E_ADMIN_PASSWORD='Integration@123',
+    environment = dict(os.environ, E2E_BASE_URL=web.base, E2E_ADMIN_PASSWORD=admin_password,
         E2E_CLASS_ID=state['cid'], E2E_ASSIGNMENT_ID=state['aid'], E2E_SMTP_FAILURE='true', E2E_TEACHER_ID=teacher_id)
     environment.update(state.get('browser_environment', {}))
     subprocess.run(['npm', 'run', 'test:e2e'], cwd=state['repo']/'ClientApp', env=environment, check=True)
     passed('Chromium: permission form dependencies and all existing React/learning workflows')
+    return admin_password
 
 
 if __name__ == '__main__':
