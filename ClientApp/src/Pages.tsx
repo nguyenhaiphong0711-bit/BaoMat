@@ -623,11 +623,7 @@ export function ClassDetail() {
         eyebrow={c.subjectName}
         title={c.name}
         description={c.description || "Không gian học tập của lớp."}
-      >
-        <a className="button secondary" href={`/Class/Details/${c.id}`}>
-          Hồ sơ lớp ↗
-        </a>
-      </Heading>
+      />
       <section className="panel class-info">
         <span>
           Giảng viên <strong>{c.teacherName}</strong>
@@ -638,7 +634,7 @@ export function ClassDetail() {
             {c.enrolledCount}/{c.enrollmentCapacity}
           </strong>
         </span>
-        <a href={`/Schedule/Index?classId=${c.id}`}>Xem lịch lớp →</a>
+        <Link to="/schedule">Xem lịch lớp →</Link>
       </section>
       <div className="content-grid">
         <section className="panel">

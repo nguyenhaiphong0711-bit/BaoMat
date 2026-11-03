@@ -95,7 +95,11 @@ public sealed class PortalController(UserService users, AcademicService academic
     }
 
     [HttpGet("admin/terms"), Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> Terms() => Ok(await academics.GetTermsAsync());
+    public async Task<IActionResult> Terms() => Ok((await academics.GetTermsAsync()).Select(x => new {
+        id = x.Id.ToString(), x.Code, x.Name, x.AcademicYear, x.SemesterNumber,
+        x.StartsAt, x.EndsAt, x.RegistrationOpensAt, x.RegistrationClosesAt,
+        x.TuitionPerCredit, x.IsActive
+    }));
 
     [HttpPost("admin/terms"), Authorize(Roles = Roles.Admin), ValidateAntiForgeryToken]
     public async Task<IActionResult> SaveTerm(AcademicTermViewModel request)
@@ -180,7 +184,10 @@ public sealed class PortalController(UserService users, AcademicService academic
     }
 
     [HttpGet("admin/activity-logs"), Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> ActivityLogs() => Ok((await logs.GetAllAsync()).Take(200));
+    public async Task<IActionResult> ActivityLogs() => Ok((await logs.GetAllAsync()).Take(200).Select(x => new {
+        id = x.Id.ToString(), userId = x.UserId?.ToString(), x.Email, x.Action,
+        x.Success, x.Message, x.IpAddress, x.UserAgent, x.CreatedAt
+    }));
 }
 
 public sealed record ReviewRequest(bool Approve);
