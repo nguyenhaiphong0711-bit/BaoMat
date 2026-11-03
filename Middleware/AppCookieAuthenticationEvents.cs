@@ -46,27 +46,42 @@ public sealed class AppCookieAuthenticationEvents(UserService users, PermissionS
         var user = userId is null ? null : await users.GetAsync(userId);
         var roleClaim = context.Principal?.FindFirstValue(ClaimTypes.Role);
         var passwordVersion = context.Principal?.FindFirstValue(AuthClaims.PasswordVersion);
+        // Cookies issued before password-version was introduced are still safe to
+        // migrate when the account has never changed its password. A real password
+        // change continues to invalidate every older session.
+        var passwordVersionMatches = user is not null &&
+            (passwordVersion == AuthClaims.PasswordVersionFor(user) ||
+             (passwordVersion is null && user.PasswordChangedAt is null));
 
         if (user is { IsActive: true } &&
             user.Role == roleClaim &&
-            passwordVersion == AuthClaims.PasswordVersionFor(user))
+            passwordVersionMatches)
         {
             if (context.Principal?.Identity is not ClaimsIdentity identity)
                 return;
+
+            var shouldRenew = false;
+            if (passwordVersion is null)
+            {
+                identity.AddClaim(new Claim(AuthClaims.PasswordVersion, AuthClaims.PasswordVersionFor(user)));
+                shouldRenew = true;
+            }
 
             var existing = identity.FindAll(PermissionCodes.ClaimType)
                 .Select(claim => claim.Value)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
             var current = (await permissions.GetEffectiveCodesAsync(user)).ToArray();
-            if (existing.SequenceEqual(current, StringComparer.Ordinal))
-                return;
+            if (!existing.SequenceEqual(current, StringComparer.Ordinal))
+            {
+                foreach (var claim in identity.FindAll(PermissionCodes.ClaimType).ToArray())
+                    identity.RemoveClaim(claim);
+                foreach (var code in current)
+                    identity.AddClaim(new Claim(PermissionCodes.ClaimType, code));
+                shouldRenew = true;
+            }
 
-            foreach (var claim in identity.FindAll(PermissionCodes.ClaimType).ToArray())
-                identity.RemoveClaim(claim);
-            foreach (var code in current)
-                identity.AddClaim(new Claim(PermissionCodes.ClaimType, code));
-            context.ShouldRenew = true;
+            context.ShouldRenew = shouldRenew;
             return;
         }
 
