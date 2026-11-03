@@ -12,13 +12,13 @@ export function StudentRegistrations() {
   const action = useAction();
   if (result.loading) return <Loading />;
   return <><h1>Đăng ký môn/lớp</h1><Alert message={result.error ?? action.error} />
-    <section className="panel">{result.data?.map(x => <article className="assignment" key={x.classId}>
+    <section className="panel">{result.data?.length ? result.data.map(x => <article className="assignment" key={x.classId}>
       <h2>{x.subjectCode} · {x.subjectName}</h2><p>{x.className} · {x.teacherName} · {x.termName}</p>
       <small>{x.enrolled}/{x.capacity} sinh viên</small><div className="actions">
         {x.isPending ? <span className="badge">Chờ duyệt</span> : x.isRegistered
           ? <button className="button secondary" onClick={() => action.run(s => api(`/api/portal/student/registrations/${x.classId}`, {method:"DELETE",signal:s}), result.reload)}>Rút đăng ký</button>
           : <button onClick={() => action.run(s => api(`/api/portal/student/registrations/${x.classId}`, {method:"POST",signal:s}), result.reload)}>Gửi đăng ký</button>}
-      </div></article>)}</section></>;
+      </div></article>) : !result.error && <div className="empty-state"><h2>Chưa có lớp phù hợp để đăng ký</h2><p>Hãy kiểm tra thời gian mở đăng ký, ngành học, học kỳ hiện tại và chương trình môn học. Lớp chỉ xuất hiện khi thuộc đúng chương trình và học kỳ đang mở.</p></div>}</section></>;
 }
 
 export function StudentAcademic({ tuition = false }: { tuition?: boolean }) {
@@ -60,7 +60,7 @@ export function AdminUsers() {
   const [form,setForm]=useState({fullName:"",email:"",password:"",role:"Student"});
   const submit=(e:FormEvent)=>{e.preventDefault();void action.run(s=>api("/api/users",{method:"POST",signal:s,body:form}),()=>{setForm({...form,fullName:"",email:"",password:""});result.reload();});};
   if(result.loading)return <Loading/>; return <><h1>Người dùng</h1><Alert message={result.error??action.error}/>
-    <section className="panel editor"><form onSubmit={submit}><fieldset disabled={action.busy}><label>Họ tên<input required value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})}/></label><label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Mật khẩu<input required minLength={8} type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><label>Vai trò<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option>Student</option><option>Teacher</option><option>Staff</option><option>Admin</option></select></label><button>Tạo tài khoản</button></fieldset></form></section>
+    <section className="panel editor"><form onSubmit={submit}><fieldset disabled={action.busy}><label>Họ tên<input required value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})}/></label><label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Mật khẩu<input required minLength={8} type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><label>Vai trò<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option>Student</option><option>Teacher</option><option>Staff</option><option>Admin</option></select></label>{form.role==="Student"&&<p className="muted">Sau khi tạo Student, vào <strong>Phân quyền</strong> để gán ngành học và học kỳ hiện tại. Student chỉ thấy lớp thuộc chương trình đã được gán.</p>}<button>Tạo tài khoản</button></fieldset></form></section>
     <section className="panel">{result.data?.map(x=><article className="assignment" key={x.id}><h2>{x.fullName}</h2><p>{x.email} · {x.role}</p><button className="button secondary" onClick={()=>action.run(s=>api(`/api/users/${x.id}/toggle-active`,{method:"POST",signal:s}),result.reload)}>{x.isActive?"Khóa":"Mở khóa"}</button></article>)}</section></>;
 }
 

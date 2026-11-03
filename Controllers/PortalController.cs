@@ -29,6 +29,11 @@ public sealed class PortalController(UserService users, AcademicService academic
     public async Task<IActionResult> Registrations()
     {
         var student = await CurrentAsync(); if (student is not { Role: Roles.Student }) return Forbid();
+        if (student.ProgramId is null || !student.AcademicProfileInitialized || student.CurrentSemester < 1)
+            return Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Hồ sơ học vụ chưa hoàn tất",
+                detail: "Tài khoản chưa được gán ngành học và học kỳ hiện tại. Hãy liên hệ quản trị viên để cập nhật tại mục Phân quyền.");
         var available = await academics.GetEligibleClassesAsync(student);
         var statuses = await academics.GetRegistrationStatusesAsync(student.Id, available.Select(x => x.Class.Id).ToArray());
         var rows = new List<CourseRegistrationItemViewModel>();
