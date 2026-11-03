@@ -363,7 +363,7 @@ Các giá trị sau không được commit:
 
 Chúng được cấu hình bằng `.env` local bị Git ignore hoặc Environment Variables trên Render.
 
-## PHẦN III – KỊCH BẢN NÓI THEO 24 SLIDE
+## PHẦN III – KỊCH BẢN NÓI THEO 30 SLIDE
 
 Phần này chỉ là lời nói gợi ý. Không cần đọc nguyên văn; hãy hiểu ý và nói bằng cách của mình.
 
@@ -383,83 +383,107 @@ Phần này chỉ là lời nói gợi ý. Không cần đọc nguyên văn; hã
 
 “Admin quản trị toàn hệ thống. Staff bị giới hạn theo khoa. Teacher bị giới hạn theo lớp và môn. Student chỉ dùng dữ liệu chính chủ. Role mới là lớp đầu; service vẫn phải kiểm tra bản ghi cụ thể.”
 
-### Slide 5 – Kiến trúc
+### Slide 5 – LearnSpace là gì?
+
+“LearnSpace là website quản lý học tập tập trung. Nhà trường, cán bộ, giảng viên và sinh viên đăng nhập trên cùng một hệ thống, nhưng giao diện, chức năng và dữ liệu được thay đổi theo quyền. Mục tiêu là nối quản trị đào tạo với hoạt động dạy và học, đồng thời kiểm tra quyền tại backend.”
+
+### Slide 6 – Các nghiệp vụ chính
+
+“Hệ thống có sáu nhóm nghiệp vụ: tổ chức đào tạo; dạy và học; khảo thí; kiểm duyệt nội dung; hỗ trợ người dùng; và quản trị an toàn. Vì các nhóm này liên kết nhau, một thay đổi như mở quiz phải xét cả môn, lớp, lịch mở, trạng thái câu hỏi và quyền của người gọi.”
+
+### Slide 7 – Người dùng và quyền
+
+“Admin có phạm vi toàn hệ thống. Staff làm việc trong khoa được giao. Teacher quản lý lớp và môn được phân công. Student chỉ dùng dữ liệu chính chủ và lớp đã ghi danh. Role cho biết nhóm chức năng, còn data scope quyết định bản ghi cụ thể nào được truy cập.”
+
+### Slide 8 – Admin và Staff
+
+“Admin quản lý tài khoản, role, permission, danh mục đào tạo và audit log. Staff quản lý sinh viên, đăng ký, học liệu, hỗ trợ và báo cáo trong khoa. Hai tài khoản có thể cùng thấy chức năng quản lý, nhưng truy vấn của Staff luôn phải kèm DepartmentId.”
+
+### Slide 9 – Teacher
+
+“Teacher xem lịch và lớp được phân công; tạo bài học, file, bài tập, câu hỏi và quiz; theo dõi bài nộp và chấm điểm. AI chỉ tạo bản nháp hỗ trợ. Service kiểm tra TeacherId hoặc phân công môn, vì việc giao diện ẩn nút không ngăn được người dùng tự gọi API.”
+
+### Slide 10 – Student
+
+“Student xem lớp, lịch, học liệu; nộp bài; làm quiz; xem kết quả và gửi ticket hỗ trợ. Mỗi truy vấn phải gắn UserId hoặc StudentId hiện tại. Vì vậy đổi ID trên URL không được phép mở bài nộp, điểm hoặc ticket của người khác.”
+
+### Slide 11 – Kiến trúc
 
 “React không kết nối MongoDB trực tiếp. Request vào middleware, controller và service rồi mới tới MongoDB hoặc GridFS. Response được map sang DTO. Sự kiện quan trọng được ghi audit.”
 
-### Slide 6 – Công nghệ
+### Slide 12 – Công nghệ
 
 “React tạo giao diện; TypeScript kiểm tra kiểu. ASP.NET Core xử lý API và quyền. MongoDB Atlas lưu dữ liệu. GridFS lưu file. BCrypt băm mật khẩu. Docker giúp triển khai cùng một cấu hình.”
 
-### Slide 7 – Dữ liệu
+### Slide 13 – Dữ liệu
 
 “Các collection liên kết bằng ObjectId. MongoDB không có foreign key vật lý nên service kiểm tra liên kết. Một số dữ liệu như message, history và version được nhúng trong document cha.”
 
-### Slide 8 – Ba lớp kiểm tra
+### Slide 14 – Ba lớp kiểm tra
 
 “Authentication kiểm tra người dùng là ai. Authorization kiểm tra được dùng chức năng nào. Data scope kiểm tra được thao tác trên bản ghi nào. Cần đủ cả ba.”
 
-### Slide 9 – Đăng nhập
+### Slide 15 – Đăng nhập
 
 “Server chuẩn hóa email, kiểm tra tài khoản và thời gian khóa, rồi dùng BCrypt Verify. Sai nhiều lần tăng bộ đếm bằng update nguyên tử. Thông báo lỗi không tiết lộ email có tồn tại hay không.”
 
-### Slide 10 – Cookie
+### Slide 16 – Cookie
 
 “Cookie được đặt HttpOnly, Secure và SameSite. Mỗi request server đọc lại User. Nếu tài khoản bị khóa, role thay đổi hoặc password version khác thì cookie bị hủy.”
 
-### Slide 11 – Mật khẩu và OTP
+### Slide 17 – Mật khẩu và OTP
 
 “Mật khẩu lưu bằng BCrypt, có lịch sử năm hash. OTP sáu số, 10 phút, dùng một lần và có giới hạn gửi. Reset thành công hủy phiên cũ.”
 
-### Slide 12 – IDOR
+### Slide 18 – IDOR
 
 “Có quyền xem lớp chưa đủ. TeacherId phải đúng giảng viên, StudentIds phải chứa sinh viên, DepartmentId phải đúng khoa. Đổi ID trên URL không mở rộng quyền.”
 
-### Slide 13 – Ba rủi ro web
+### Slide 19 – Ba rủi ro web
 
 “CSRF lợi dụng cookie, XSS lợi dụng nội dung hiển thị, NoSQL Injection lợi dụng truy vấn. Mỗi loại được chặn bằng token, output encoding và typed filter.”
 
-### Slide 14 – CSRF
+### Slide 20 – CSRF
 
 “Các request thay đổi dữ liệu phải có antiforgery token do ứng dụng cấp. Trang ngoài có thể khiến trình duyệt gửi cookie nhưng không có token hợp lệ.”
 
-### Slide 15 – XSS và NoSQL Injection
+### Slide 21 – XSS và NoSQL Injection
 
 “React hiển thị chuỗi ở dạng text nên script không chạy. Backend nhận email dạng string và dùng biểu thức C# để tạo filter MongoDB, không nhận raw BSON từ client.”
 
-### Slide 16 – File
+### Slide 22 – File
 
 “Server kiểm tra dung lượng, đuôi, MIME và magic bytes. File nằm trong GridFS ngoài webroot và tải qua API có kiểm tra quyền.”
 
-### Slide 17 – Kiểm duyệt
+### Slide 23 – Kiểm duyệt
 
 “Nội dung đi từ Draft đến review và publish. Tác giả không tự duyệt. Revision ngăn ghi đè thay đổi của người khác và version giữ lịch sử.”
 
-### Slide 18 – Quiz
+### Slide 24 – Quiz
 
 “Quiz chỉ dùng câu hỏi published. Student phải thuộc lớp. API không trả đáp án trước khi nộp. Attempt lưu snapshot và server chấm một lần.”
 
-### Slide 19 – Nhật ký
+### Slide 25 – Nhật ký
 
 “ActivityLog dùng cho đăng nhập và bảo mật. LearningEvent dùng cho hoạt động học tập. Response lỗi production không trả stack trace; request ID giúp tìm log.”
 
-### Slide 20 – Vận hành
+### Slide 26 – Vận hành
 
 “Rate limit giảm lạm dụng. Health check phát hiện dịch vụ lỗi. Index và pagination giảm tải. Backup phải được restore thử. Secret nằm ngoài source và dependency được quét.”
 
-### Slide 21 – AI
+### Slide 27 – AI
 
 “AI chỉ tạo Draft theo JSON Schema. API key ở backend. Teacher vẫn phải sửa và duyệt. AI lỗi thì không tạo bản ghi dở dang.”
 
-### Slide 22 – Kiểm thử
+### Slide 28 – Kiểm thử
 
 “Test không chỉ nhìn status code mà còn kiểm tra database có thay đổi sai hay không. Bộ hiện tại có 64 nhóm regression, 20 test React và smoke request đồng thời.”
 
-### Slide 23 – Demo
+### Slide 29 – Demo
 
 “Em demo theo vai trò: Admin phân quyền, Staff xem phạm vi khoa, Teacher quản lý lớp và Student sử dụng nội dung. Mỗi bước có một thao tác hợp lệ và một thao tác ngoài phạm vi.”
 
-### Slide 24 – Kết luận
+### Slide 30 – Kết luận
 
 “Bảo mật nằm trong luồng nghiệp vụ. Mỗi request phải đúng người, đúng chức năng, đúng dữ liệu và có thể truy vết. Frontend hỗ trợ trải nghiệm; backend mới là nơi quyết định quyền.”
 
