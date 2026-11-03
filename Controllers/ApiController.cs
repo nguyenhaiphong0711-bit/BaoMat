@@ -306,14 +306,18 @@ public sealed class ApiController : ControllerBase
             FullName = request.FullName,
             Email = request.Email,
             Password = request.Password,
-            Role = request.Role
+            Role = request.Role,
+            DepartmentId = request.DepartmentId,
+            ProgramId = request.ProgramId,
+            CurrentSemester = request.CurrentSemester,
+            TeachingSubjectIds = request.TeachingSubjectIds.ToList()
         });
 
         if (!created)
             return Conflict(new ProblemDetails
             {
                 Status = StatusCodes.Status409Conflict,
-                Title = "Email đã tồn tại",
+                Title = "Email đã tồn tại hoặc hồ sơ khoa/ngành/môn học không hợp lệ",
                 Instance = HttpContext.Request.Path
             });
 

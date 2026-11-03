@@ -49,6 +49,11 @@ public sealed record ApiCreateUserRequest
 
     [Required, RegularExpression("^(Admin|Teacher|Student|Staff)$")]
     public required string Role { get; init; }
+
+    public string? DepartmentId { get; init; }
+    public string? ProgramId { get; init; }
+    [Range(1, 20)] public int CurrentSemester { get; init; } = 1;
+    public IReadOnlyList<string> TeachingSubjectIds { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>A class and its subject, teacher, and student membership.</summary>

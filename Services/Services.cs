@@ -97,25 +97,49 @@ public class UserService
         };
         if (vm.Role == Roles.Teacher)
         {
-            var defaultDepartment = await _db.Departments.Find(x => x.Code == "GEN" && !x.IsArchived)
-                .FirstOrDefaultAsync();
-            if (defaultDepartment is not null)
-            {
-                user.DepartmentId = defaultDepartment.Id;
-                user.AcademicProfileInitialized = true;
-            }
+            var department = ObjectId.TryParse(vm.DepartmentId, out var requestedDepartmentId)
+                ? await _db.Departments.Find(x => x.Id == requestedDepartmentId && !x.IsArchived).FirstOrDefaultAsync()
+                : await _db.Departments.Find(x => x.Code == "GEN" && !x.IsArchived).FirstOrDefaultAsync();
+            if (department is null || vm.TeachingSubjectIds.Any(id => !ObjectId.TryParse(id, out _)))
+                return false;
+            var subjectIds = vm.TeachingSubjectIds.Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(ObjectId.Parse).ToArray();
+            var validSubjects = subjectIds.Length == 0 ? new List<Subject>() :
+                await _db.Subjects.Find(x => !x.IsArchived && x.DepartmentId == department.Id && subjectIds.Contains(x.Id)).ToListAsync();
+            if (validSubjects.Count != subjectIds.Length)
+                return false;
+            user.DepartmentId = department.Id;
+            user.TeachingSubjectIds = subjectIds.ToList();
+            user.AcademicProfileInitialized = true;
+        }
+        else if (vm.Role == Roles.Staff)
+        {
+            var department = ObjectId.TryParse(vm.DepartmentId, out var requestedDepartmentId)
+                ? await _db.Departments.Find(x => x.Id == requestedDepartmentId && !x.IsArchived).FirstOrDefaultAsync()
+                : await _db.Departments.Find(x => x.Code == "GEN" && !x.IsArchived).FirstOrDefaultAsync();
+            if (department is null)
+                return false;
+            user.DepartmentId = department.Id;
+            user.AcademicProfileInitialized = true;
         }
         else if (vm.Role == Roles.Student)
         {
-            var defaultProgram = await _db.AcademicPrograms.Find(x => x.Code == "GEN-DEFAULT" && x.IsActive)
-                .FirstOrDefaultAsync();
-            if (defaultProgram is not null)
-            {
-                user.ProgramId = defaultProgram.Id;
-                user.DepartmentId = defaultProgram.DepartmentId;
-                user.CurrentSemester = 1;
-                user.AcademicProfileInitialized = true;
-            }
+            AcademicProgram? program = null;
+            if (ObjectId.TryParse(vm.ProgramId, out var requestedProgramId))
+                program = await _db.AcademicPrograms.Find(x => x.Id == requestedProgramId && x.IsActive).FirstOrDefaultAsync();
+            else
+                program = await _db.AcademicPrograms.Find(x => x.Code == "GEN-DEFAULT" && x.IsActive).FirstOrDefaultAsync();
+            if (program is null || vm.CurrentSemester is < 1 or > 20 ||
+                !await _db.ProgramCourses.Find(x => x.ProgramId == program.Id && x.SemesterNumber == vm.CurrentSemester).AnyAsync())
+                return false;
+            user.ProgramId = program.Id;
+            user.DepartmentId = program.DepartmentId;
+            user.CurrentSemester = vm.CurrentSemester;
+            user.AcademicProfileInitialized = true;
+        }
+        else if (vm.Role == Roles.Admin)
+        {
+            user.AcademicProfileInitialized = true;
         }
 
         try { await _db.Users.InsertOneAsync(user); }

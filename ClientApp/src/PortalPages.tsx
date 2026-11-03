@@ -4,7 +4,7 @@ import { api } from "./api";
 import { useAction, useRemote } from "./hooks";
 import { Alert, Loading } from "./ui";
 import type { Department, Subject } from "./types";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "./auth";
 
 export function StudentRegistrations() {
@@ -56,12 +56,20 @@ export function SchedulePage() {
 }
 
 export function AdminUsers() {
-  const result = useRemote<any[]>("/api/users"); const action = useAction();
-  const [form,setForm]=useState({fullName:"",email:"",password:"",role:"Student"});
-  const submit=(e:FormEvent)=>{e.preventDefault();void action.run(s=>api("/api/users",{method:"POST",signal:s,body:form}),()=>{setForm({...form,fullName:"",email:"",password:""});result.reload();});};
-  if(result.loading)return <Loading/>; return <><h1>Người dùng</h1><Alert message={result.error??action.error}/>
-    <section className="panel editor"><form onSubmit={submit}><fieldset disabled={action.busy}><label>Họ tên<input required value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})}/></label><label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Mật khẩu<input required minLength={8} type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><label>Vai trò<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option>Student</option><option>Teacher</option><option>Staff</option><option>Admin</option></select></label>{form.role==="Student"&&<p className="muted">Sau khi tạo Student, vào <strong>Phân quyền</strong> để gán ngành học và học kỳ hiện tại. Student chỉ thấy lớp thuộc chương trình đã được gán.</p>}<button>Tạo tài khoản</button></fieldset></form></section>
-    <section className="panel">{result.data?.map(x=><article className="assignment" key={x.id}><h2>{x.fullName}</h2><p>{x.email} · {x.role}</p><button className="button secondary" onClick={()=>action.run(s=>api(`/api/users/${x.id}/toggle-active`,{method:"POST",signal:s}),result.reload)}>{x.isActive?"Khóa":"Mở khóa"}</button></article>)}</section></>;
+  const users=useRemote<any[]>("/api/users");const scope=useRemote<any>("/api/portal/admin/permissions");const action=useAction();
+  const empty={fullName:"",email:"",password:"",role:"Student",departmentId:"",programId:"",currentSemester:1,teachingSubjectIds:[] as string[]};const [form,setForm]=useState(empty);
+  const changeRole=(role:string)=>setForm({...form,role,departmentId:"",programId:"",currentSemester:1,teachingSubjectIds:[]});
+  const subjects=(scope.data?.subjects??[]).filter((x:any)=>x.departmentId===form.departmentId);
+  const toggleSubject=(id:string,checked:boolean)=>setForm({...form,teachingSubjectIds:checked?[...form.teachingSubjectIds,id]:form.teachingSubjectIds.filter(x=>x!==id)});
+  const submit=(e:FormEvent)=>{e.preventDefault();void action.run(signal=>api("/api/users",{method:"POST",signal,body:form}),()=>{setForm(empty);users.reload();scope.reload()})};
+  if(users.loading||scope.loading)return <Loading/>;
+  return <><h1>Người dùng</h1><Alert message={users.error??scope.error??action.error}/><section className="panel editor"><form onSubmit={submit}><fieldset disabled={action.busy}>
+    <label>Họ tên<input required minLength={2} value={form.fullName} onChange={e=>setForm({...form,fullName:e.target.value})}/></label><label>Email<input required type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Mật khẩu<input required minLength={8} type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><label>Vai trò<select value={form.role} onChange={e=>changeRole(e.target.value)}><option>Student</option><option>Teacher</option><option>Staff</option><option>Admin</option></select></label>
+    {form.role==="Student"&&<><label>Ngành học<select required value={form.programId} onChange={e=>setForm({...form,programId:e.target.value})}><option value="">Chọn ngành</option>{scope.data?.programs.map((x:any)=><option key={x.id} value={x.id} disabled={x.courseCount===0}>{x.code} · {x.name} · {x.courseCount} môn</option>)}</select></label><label>Học kỳ hiện tại<input required type="number" min={1} max={20} value={form.currentSemester} onChange={e=>setForm({...form,currentSemester:Number(e.target.value)})}/></label></>}
+    {(form.role==="Teacher"||form.role==="Staff")&&<label>Khoa phụ trách<select required value={form.departmentId} onChange={e=>setForm({...form,departmentId:e.target.value,teachingSubjectIds:[]})}><option value="">Chọn khoa</option>{scope.data?.departments.map((x:any)=><option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>}
+    {form.role==="Teacher"&&<div className="permission-options"><strong>Môn giảng dạy ban đầu</strong>{!form.departmentId&&<p className="muted">Chọn khoa trước.</p>}{form.departmentId&&subjects.length===0&&<p className="muted">Khoa chưa có môn đang hoạt động.</p>}{subjects.map((x:any)=><label className="check" key={x.id}><input type="checkbox" checked={form.teachingSubjectIds.includes(x.id)} onChange={e=>toggleSubject(x.id,e.target.checked)}/>{x.code} · {x.name}</label>)}</div>}
+    <p className="muted">Tài khoản được tạo cùng hồ sơ phạm vi và bộ quyền mặc định của role. Có thể thu hẹp quyền tại trang Phân quyền.</p><button>Tạo tài khoản hoàn chỉnh</button>
+  </fieldset></form></section><section className="panel">{users.data?.map(x=>{const profile=scope.data?.users.find((u:any)=>u.id===x.id);return <article className="assignment" key={x.id}><h2>{x.fullName}</h2><p>{x.email} · {x.role}</p>{x.role!=="Admin"&&<span className="badge">{profile?.academicProfileInitialized?"Hồ sơ đã hoàn tất":"Chưa có phạm vi dữ liệu"}</span>}<div className="actions">{x.role!=="Admin"&&!profile?.academicProfileInitialized&&<Link className="button secondary" to="/admin/permissions">Hoàn tất hồ sơ</Link>}<button className="button secondary" onClick={()=>action.run(signal=>api(`/api/users/${x.id}/toggle-active`,{method:"POST",signal}),users.reload)}>{x.isActive?"Khóa":"Mở khóa"}</button></div></article>})}</section></>;
 }
 
 export function ClassEditor(){

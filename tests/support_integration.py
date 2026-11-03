@@ -42,6 +42,10 @@ def support_checks(state):
     assert any(x['type']=='support.created' for x in api(staff, '/api/notifications')['items'])
     listed = api(student, '/api/support')['items'][0]
     assert listed['messages'] == []
+    admin_list = api(web, '/api/support')['items']
+    assert tid in [item['id'] for item in admin_list]
+    assert api(web, '/api/support/'+tid)['canManage'] is True
+    passed('Admin sees and can manage every newly created support ticket regardless of department')
     outsider = Web(web.base); api(outsider, '/api/auth/login', {'email':'resource-peer@example.test','password':'LibraryTest@123'})
     api(outsider, '/api/support/'+tid, expected=404)
     passed('ticket identity, department and state come from the authenticated student; list summaries omit conversation content')

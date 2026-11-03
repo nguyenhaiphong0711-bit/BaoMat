@@ -43,6 +43,10 @@ public class CreateUserViewModel
         ErrorMessage = "Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt.")]
     public string Password { get; set; } = "";
     [Required, RegularExpression("^(Admin|Teacher|Student|Staff)$")] public string Role { get; set; } = Roles.Student;
+    public string? DepartmentId { get; set; }
+    public string? ProgramId { get; set; }
+    [Range(1, 20)] public int CurrentSemester { get; set; } = 1;
+    public List<string> TeachingSubjectIds { get; set; } = new();
 }
 
 public class CreateClassViewModel
