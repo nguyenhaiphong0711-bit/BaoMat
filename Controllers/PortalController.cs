@@ -137,14 +137,37 @@ public sealed class PortalController(UserService users, AcademicService academic
     }
 
     [HttpGet("admin/permissions"), Authorize(Roles = Roles.Admin)]
-    public async Task<IActionResult> Permissions() => Ok(new {
-        users = (await users.GetAllAsync()).Where(x => x.Role is Roles.Teacher or Roles.Student or Roles.Staff).Select(x => new {
-            id=x.Id.ToString(), x.FullName, x.Email, x.Role, permissionCodes=x.PermissionCodes,
-            departmentId=x.DepartmentId?.ToString(), programId=x.ProgramId?.ToString(), x.CurrentSemester,
-            teachingSubjectIds=x.TeachingSubjectIds.Select(y=>y.ToString()) }),
-        permissions = await permissions.GetAllAsync(), departments = await departments.GetAllAsync(),
-        programs = await academics.GetProgramsAsync(), subjects = await subjects.GetAllAsync()
-    });
+    public async Task<IActionResult> Permissions()
+    {
+        var userRows = (await users.GetAllAsync())
+            .Where(x => x.Role is Roles.Teacher or Roles.Student or Roles.Staff)
+            .Select(x => new {
+                id = x.Id.ToString(), x.FullName, x.Email, x.Role,
+                permissionCodes = x.PermissionCodes,
+                departmentId = x.DepartmentId?.ToString(),
+                programId = x.ProgramId?.ToString(), x.CurrentSemester,
+                teachingSubjectIds = x.TeachingSubjectIds.Select(y => y.ToString()),
+                x.AcademicProfileInitialized
+            });
+        var permissionRows = (await permissions.GetAllAsync()).Select(x => new {
+            x.Code, x.Name, x.Category, x.Description, x.AllowedRoles, x.RequiredCodes
+        });
+        var departmentRows = (await departments.GetAllAsync()).Select(x => new {
+            id = x.Id.ToString(), x.Code, x.Name
+        });
+        var programCourseCounts = await academics.GetProgramCourseCountsAsync();
+        var programRows = (await academics.GetProgramsAsync()).Select(x => new {
+            id = x.Id.ToString(), departmentId = x.DepartmentId.ToString(), x.Code, x.Name,
+            courseCount = programCourseCounts.GetValueOrDefault(x.Id.ToString())
+        });
+        var subjectRows = (await subjects.GetAllAsync()).Select(x => new {
+            id = x.Id.ToString(), departmentId = x.DepartmentId.ToString(), x.Code, x.Name
+        });
+        return Ok(new {
+            users = userRows, permissions = permissionRows,
+            departments = departmentRows, programs = programRows, subjects = subjectRows
+        });
+    }
 
     [HttpPut("admin/permissions/{id}"), Authorize(Roles = Roles.Admin), ValidateAntiForgeryToken]
     public async Task<IActionResult> AssignPermissions(string id, UserPermissionViewModel request)

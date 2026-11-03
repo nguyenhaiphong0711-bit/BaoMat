@@ -284,6 +284,24 @@ public class UserService
                     .FirstOrDefaultAsync() is not { } program)
                 return false;
 
+            var curriculumSubjects = (await _db.ProgramCourses.Find(x =>
+                x.ProgramId == programId &&
+                x.SemesterNumber == model.CurrentSemester).ToListAsync())
+                .Select(x => x.SubjectId).ToHashSet();
+            if (curriculumSubjects.Count == 0)
+                return false;
+
+            // Do not leave an enrolled student attached to classes outside the new
+            // program/semester. This also prevents changing the profile merely to
+            // discover or register for data outside the student's academic scope.
+            var enrolledClasses = await _db.Classes.Find(x =>
+                !x.IsArchived && x.StudentIds.Contains(userId)).ToListAsync();
+            if (enrolledClasses.Count > 0)
+            {
+                if (enrolledClasses.Any(x => !curriculumSubjects.Contains(x.SubjectId)))
+                    return false;
+            }
+
             var result = await _db.Users.UpdateOneAsync(x => x.Id == userId && x.IsActive && x.Role == user.Role,
                 Builders<User>.Update
                     .Set(x => x.ProgramId, programId)
